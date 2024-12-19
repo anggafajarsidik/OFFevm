@@ -1,0 +1,13 @@
+{
+  "name": "autotx",
+  "version": "1.0.0",
+  "main": "autotxtestnet..js",
+  "scripts": {
+    "start": "node autotxtestnet.js"
+  },
+  "dependencies": {
+    "web3": "^1.6.0",
+    "inquirer": "^8.2.4"
+  },
+  "type": "module"
+}
