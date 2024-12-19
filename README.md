@@ -61,13 +61,7 @@ Create the following files in the project directory:
 ---
 
 ## **Run the Script**
-1. Open a terminal and navigate to the project folder:
-   ```bash
-   cd <repository_name>
-   ```
-
-2. Execute the script:
-   ```bash
+1.     ```bash
    node autotxtestnet.js
    ```
 
