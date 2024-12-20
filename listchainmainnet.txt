@@ -16,5 +16,29 @@
     "rpcUrl": "https://polygon-rpc.com/",
     "chainId": 137,
     "symbol": "MATIC"
+  },
+  {
+    "name": "Arbitrum One",
+    "rpcUrl": "https://arb1.arbitrum.io/rpc",
+    "chainId": 42161,
+    "symbol": "ETH"
+  },
+  {
+    "name": "Optimism",
+    "rpcUrl": "https://mainnet.optimism.io",
+    "chainId": 10,
+    "symbol": "ETH"
+  },
+  {
+    "name": "zkSync Era Mainnet",
+    "rpcUrl": "https://mainnet.era.zksync.io",
+    "chainId": 324,
+    "symbol": "ETH"
+  },
+  {
+    "name": "Base",
+    "rpcUrl": "https://mainnet.base.org",
+    "chainId": 8453,
+    "symbol": "ETH"
   }
 ]
