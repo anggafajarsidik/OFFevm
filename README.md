@@ -62,6 +62,11 @@ Create the following files in the project directory:
    node autotxmainnet.js
    ```
 ---
+## **if got error Cannot convert a BigInt value to a number**
+1. Execute this command :
+```bash
+   node autotxtestnet.js
+   ```
 
 ## **How It Works**
 1. Follow the interactive prompts:
