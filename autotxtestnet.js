@@ -21,7 +21,7 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
 ██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
 ╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═════╝   ╚═╝   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═╝   
 `;
 
 // Simple, direct message
@@ -107,8 +107,23 @@ const main = async () => {
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 
+    // Function to fetch nonce with retries
+    const getNonceWithRetries = async (address, maxRetries = 5) => {
+      let retries = 0;
+      while (retries < maxRetries) {
+        try {
+          return await web3.eth.getTransactionCount(address, "pending");
+        } catch (error) {
+          retries++;
+          console.error(`Error fetching nonce, retrying (${retries}/${maxRetries})...`);
+          await sleep(1);
+        }
+      }
+      throw new Error("Failed to fetch nonce after multiple retries");
+    };
+
     // Get the initial nonce for the wallet
-    let nonce = await web3.eth.getTransactionCount(account.address, "latest");
+    let nonce = await getNonceWithRetries(account.address);
 
     // Loop through the number of transactions the user wants to send
     for (let i = 0; i < transactionsCount; i++) {
