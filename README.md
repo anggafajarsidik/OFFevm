@@ -1,7 +1,8 @@
 ## **Features**
-- Send transactions to multiple addresses from a list.
+- Send transactions to multiple addresses from a list or Single address
 - Supports custom delay between transactions.
 - Easy configuration for different networks.
+- Multiple Wallet
 ---
 
 ## **Requirements**
