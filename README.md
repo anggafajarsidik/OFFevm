@@ -61,7 +61,7 @@ Create the following files in the project directory:
 ---
 
 ## **Run the Script**
-1.     ```bash
+    ```bash
    node autotxtestnet.js
    ```
 
