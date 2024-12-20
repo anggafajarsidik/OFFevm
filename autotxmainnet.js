@@ -21,8 +21,7 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
 ██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
 ╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚════╝ ╚══════╝ ╚═════╝   ╚═╝   
-                                                                                       
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═╝   
 `;
 
 const creativeMessage = `
@@ -40,6 +39,18 @@ const main = async () => {
     .split("\n")
     .map(key => key.trim())
     .filter(key => key);
+
+  // Add '0x' prefix if not present and validate private keys
+  privateKeys.forEach((key, index) => {
+    if (!/^0x[a-fA-F0-9]{64}$/.test(key)) {
+      if (/^[a-fA-F0-9]{64}$/.test(key)) {
+        privateKeys[index] = `0x${key}`;
+      } else {
+        console.error(`Invalid private key format: ${key}`);
+        process.exit(1);
+      }
+    }
+  });
 
   const networks = JSON.parse(await fs.readFile("listchainmainnet.txt", "utf-8"));
 
