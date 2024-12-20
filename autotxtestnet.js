@@ -21,7 +21,7 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
 ██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
 ╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚════╝ ╚══════╝ ╚═════╝   ╚═╝   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═════╝   ╚═╝   
 `;
 
 // Simple, direct message
@@ -119,22 +119,25 @@ const main = async () => {
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
+          // Convert amount to BigInt
+          const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+
           // Estimate gas needed for this transaction
-          const gasEstimate = await web3.eth.estimateGas({
+          const gasEstimate = BigInt(await web3.eth.estimateGas({
             from: account.address,
             to: toAddress,
-            value: web3.utils.toWei(amount, "ether"),
-          });
+            value: amountInWei,
+          }));
 
           // Increase the gas estimate if needed (add 10% buffer)
-          const gasLimit = Math.ceil(gasEstimate * 1.10);  // Adding a 10% buffer to the estimated gas
+          const gasLimit = BigInt(Math.ceil(Number(gasEstimate) * 1.10));  // Adding a 10% buffer to the estimated gas
 
           // Create the transaction object
           const tx = {
             to: toAddress, // Current target address
-            value: web3.utils.toWei(amount, "ether"),
+            value: amountInWei,
             gas: gasLimit,  // Use adjusted gas limit
-            gasPrice: gasPrice,
+            gasPrice: BigInt(gasPrice),
             nonce: nonce,
             chainId: chainId,
           };
