@@ -15,8 +15,8 @@
 
 ### **1. Clone the Repository**
 ```bash
-git clone https://github.com/anggafajarsidik/OFFv1
-cd OFFv1
+git clone https://github.com/anggafajarsidik/OFFevm
+cd OFFevm
 ```
 
 ### **2. Install Dependencies**
