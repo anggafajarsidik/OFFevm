@@ -23,8 +23,8 @@ An efficient Node.js script for sending multiple transactions on blockchain netw
 
 ### **1. Clone the Repository**
 ```bash
-git clone <repository_url>
-cd <repository_name>
+git clone https://github.com/anggafajarsidik/OFFautotxevm
+cd OFFautotxevm
 ```
 
 ### **2. Install Dependencies**
