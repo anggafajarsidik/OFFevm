@@ -65,7 +65,7 @@ Create the following files in the project directory:
 ## **if got error Cannot convert a BigInt value to a number**
 1. Execute this command :
 ```bash
-   node autotxtestnet.js
+   npm audit fix --force
    ```
 
 ## **How It Works**
