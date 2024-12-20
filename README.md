@@ -1,10 +1,3 @@
-
-# OFF Project - Automated Blockchain Transaction Script  
-
-An efficient Node.js script for sending multiple transactions on blockchain networks.  
-
----
-
 ## **Features**
 - Send transactions to multiple addresses from a list.
 - Supports custom delay between transactions.
