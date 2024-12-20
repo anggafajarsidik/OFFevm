@@ -119,11 +119,21 @@ const main = async () => {
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
-          // Create the transaction object for each target address
+          // Estimate gas needed for this transaction
+          const gasEstimate = await web3.eth.estimateGas({
+            from: account.address,
+            to: toAddress,
+            value: web3.utils.toWei(amount, "ether"),
+          });
+
+          // Increase the gas estimate if needed (add 10% buffer)
+          const gasLimit = Math.ceil(gasEstimate * 1.10);  // Adding a 10% buffer to the estimated gas
+
+          // Create the transaction object
           const tx = {
             to: toAddress, // Current target address
             value: web3.utils.toWei(amount, "ether"),
-            gas: 21000,
+            gas: gasLimit,  // Use adjusted gas limit
             gasPrice: gasPrice,
             nonce: nonce,
             chainId: chainId,
