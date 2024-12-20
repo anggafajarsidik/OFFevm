@@ -69,5 +69,7 @@ Create the following files in the project directory:
 
 ---
 
-## **License**
-This project is licensed under the MIT License.
+## **Disclaimer**
+This script is provided "as-is" for educational purposes only. The author and contributors are not responsible for any damages, losses, or legal issues arising from the use of this script. Users must ensure compliance with local laws and regulations regarding cryptocurrency transactions and blockchain technology.
+
+Use at your own risk.
