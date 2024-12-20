@@ -21,13 +21,18 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
 ██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
 ╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚════╝ ╚══════╝ ╚═════╝   ╚═╝   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚══════╝  ╚═════╝ ╚══════╝ ╚═════╝   ╚═╝   
+`;
+
+const creativeMessage = `
+We’re here to make blockchain easier and better.
 `;
 
 const main = async () => {
-  console.log(purple("=== Starting Transactions on Mainnet ==="));
+  console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
   console.log(purple(createdByLogo));
+  console.log(purple(creativeMessage));
 
   // Load configurations
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8")).split("\n").map(key => key.trim()).filter(key => key);
@@ -59,15 +64,30 @@ const main = async () => {
       message: "How much delay (in seconds) between transactions?",
       validate: input => !isNaN(parseInt(input)) && parseInt(input) >= 0,
     },
+    {
+      type: "confirm",
+      name: "useListAddresses",
+      message: "Do you want to send to multiple addresses from listaddress.txt?",
+      default: true,
+    },
+    {
+      type: "input",
+      name: "singleAddress",
+      message: "Enter one address to send to (if not using list):",
+      when: (answers) => !answers.useListAddresses,
+      validate: input => /^0x[a-fA-F0-9]{40}$/.test(input) || "Please enter a valid Ethereum address.",
+    },
   ]);
 
   // Parse the network choice
   const networkChoiceIndex = parseInt(answers.networkChoice.split(".")[0]) - 1;
-  const { name, rpcUrl, chainId } = networks[networkChoiceIndex];
-  const { amount, transactionsCount, delay } = answers;
+  const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
+  const { amount, transactionsCount, delay, useListAddresses, singleAddress } = answers;
 
-  // Load addresses from listaddress.txt
-  const targetAddresses = (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr);
+  // Load addresses from listaddress.txt if needed
+  const targetAddresses = useListAddresses
+    ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
+    : [singleAddress];
 
   console.log(`\nYou have selected the ${name} network.`);
 
@@ -92,13 +112,14 @@ const main = async () => {
 
     // Loop through the number of transactions the user wants to send
     for (let i = 0; i < transactionsCount; i++) {
-      console.log(`\nSending transaction #${i + 1} from wallet ${green(account.address)}...`);
+      console.log(`\nSending transaction #${i + 1} from wallet with private key ${privateKey.slice(0, 6)}...`);
 
       try {
         const gasPrice = await web3.eth.getGasPrice();
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
+          // Create the transaction object for each target address
           const tx = {
             to: toAddress, // Current target address
             value: web3.utils.toWei(amount, "ether"),
@@ -108,17 +129,21 @@ const main = async () => {
             chainId: chainId,
           };
 
+          // Sign and send the transaction
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
+          // Color the address and hash
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(receipt.transactionHash)}`);
-          nonce++;
-        }
 
-        // Wait for the specified delay before the next transaction
-        if (delay > 0) {
-          console.log(`Waiting for ${delay} seconds before sending the next transaction...`);
-          await sleep(delay);
+          // Increment nonce for the next transaction
+          nonce++;
+
+          // Wait for the specified delay before sending the next transaction
+          if (delay > 0) {
+            console.log(`Waiting for ${delay} seconds before sending the next transaction...`);
+            await sleep(delay);
+          }
         }
       } catch (error) {
         console.error(`Error sending transaction #${i + 1}:`, error.message);
@@ -126,7 +151,7 @@ const main = async () => {
     }
   }
 
-  console.log(purple("=== All Mainnet transactions completed ==="));
+  console.log(purple("=== All transactions completed ==="));
 };
 
 main().catch(error => {
