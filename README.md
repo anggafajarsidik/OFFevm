@@ -2,8 +2,6 @@
 - Send transactions to multiple addresses from a list.
 - Supports custom delay between transactions.
 - Easy configuration for different networks.
-- Displays transaction status with colored output.  
-
 ---
 
 ## **Requirements**
@@ -35,7 +33,7 @@ Create the following files in the project directory:
   0x789xyz101...
   ```
 
-- **`listchaintestnet.txt`**: Add network details in JSON format.  
+- **`listchaintestnet.txt & listchainmainnet.txt`**: Add network details in JSON format.  
   Example:  
   ```json
   [
@@ -54,10 +52,14 @@ Create the following files in the project directory:
 ---
 
 ## **Run the Script**
-  ```bash
+1. For Testnet
+```bash
    node autotxtestnet.js
    ```
-
+2. For Mainnet
+```bash
+   node autotxmainnet.js
+   ```
 ---
 
 ## **How It Works**
