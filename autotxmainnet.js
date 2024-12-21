@@ -16,12 +16,12 @@ const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
 // Custom ASCII art logo
 const createdByLogo = `
- ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
-██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝
-██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
-██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
-╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
+ ██████╗ ███████╗███████╗    ██████╗ ██████╗  ██████╗      ██╗███████╗ ██████╗████████╗
+██╔═══██╗██╔════╝██╔════╝    ██╔══██╗██╔══██╗██╔═══██╗     ██║██╔════╝██╔════╝╚══██╔══╝
+██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
+██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
+╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═╝   
 `;
 
 const creativeMessage = `
@@ -146,12 +146,7 @@ const main = async () => {
 
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-          // Generate the explorer link for the transaction
-          const explorerLink = getExplorerLink(chainId, receipt.transactionHash);
-
-          // Color the address and link
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+          console.log(`Transaction to ${green(toAddress)} successful: ${blue(receipt.transactionHash)}`);
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
