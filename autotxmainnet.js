@@ -32,7 +32,7 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
 ██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚══  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
 
 const creativeMessage = `
@@ -159,6 +159,8 @@ const main = async () => {
           transactionsSucceeded++;
           nonce++;
 
+          // Display progress
+          console.log(`Transaction ${transactionsSucceeded}/${totalTransactions} sent successfully.`);
           if (delay > 0) await sleep(delay);
         } catch (error) {
           console.error(`Error in transaction: ${error.message}`);
@@ -167,10 +169,15 @@ const main = async () => {
     }
   }
 
-  // After all transactions are completed, print the explorer links
+  // After all transactions are completed, show the final balance and explorer links
   console.log(purple("\n=== All transactions completed ==="));
   console.log(`Total Transactions: ${totalTransactions}`);
   console.log(`Transactions Successfully Completed: ${transactionsSucceeded}`);
+
+  // Fetch final balance after all transactions
+  const finalBalance = await web3.eth.getBalance(account.address);
+  console.log(`\nFinal Balance: ${blue(web3.utils.fromWei(finalBalance, "ether"))} ${symbol}`);
+
   console.log("\nExplorer Links for All Successful Transactions:");
   explorerLinks.forEach(link => {
     console.log(blue(link));
