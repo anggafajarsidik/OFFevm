@@ -125,6 +125,13 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
+  // Display current balance of sender just before starting transactions
+  for (const privateKey of privateKeys) {
+    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+    const currentBalance = await web3.eth.getBalance(account.address);
+    console.log(`Current balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
+  }
+
   // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
@@ -151,10 +158,6 @@ const main = async () => {
 
           // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
-
-          // Show current balance of sender during transaction
-          const currentBalance = await web3.eth.getBalance(account.address);
-          console.log(`Current balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
 
           nonce++;
           if (delay > 0) await sleep(delay);
