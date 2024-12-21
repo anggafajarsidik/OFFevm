@@ -79,42 +79,12 @@ const main = async () => {
   const networkChoiceIndex = parseInt(networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
 
-  // Display wallet details
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
-  // Interactive dashboard setup
-  const dashboard = {
-    transactionsCompleted: 0,
-    totalTransactions: 0,
-    currentWallet: '',
-    balance: 0,
-    status: 'Waiting for transaction setup...',
-  };
-
-  // Function to update dashboard
-  const updateDashboard = () => {
-    console.clear();
-    console.log(purple(createdByLogo));
-    console.log(purple(creativeMessage));
-    console.log(purple("\n=== Transaction Dashboard ==="));
-    console.log(`Wallet: ${green(dashboard.currentWallet)}`);
-    console.log(`Balance: ${blue(dashboard.balance)} ${symbol}`);
-    console.log(`Transactions Completed: ${green(dashboard.transactionsCompleted)} of ${dashboard.totalTransactions}`);
-    console.log(`Status: ${green(dashboard.status)}`);
-  };
-
-  for (const privateKey of privateKeys) {
-    try {
-      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-      dashboard.currentWallet = account.address;
-      const balance = await web3.eth.getBalance(account.address);
-      dashboard.balance = web3.utils.fromWei(balance, "ether");
-      updateDashboard();
-    } catch (error) {
-      console.error(`Error fetching wallet details: ${error.message}`);
-    }
-  }
+  let totalTransactions = 0;
+  let transactionsSucceeded = 0;
+  const explorerLinks = [];
 
   // Prompt user for further actions
   const answers = await inquirer.prompt([
@@ -159,7 +129,7 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
-  dashboard.totalTransactions = transactionsCount * targetAddresses.length;
+  totalTransactions = transactionsCount * targetAddresses.length;
 
   // Process transactions
   for (const privateKey of privateKeys) {
@@ -182,26 +152,29 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Generate the explorer link for the transaction
+          // Add explorer link to the list
           const explorerLink = explorerMap[chainId] + receipt.transactionHash;
+          explorerLinks.push(explorerLink);
 
-          // Update transaction progress
-          dashboard.transactionsCompleted++;
-          dashboard.status = `Transaction to ${green(toAddress)} successful!`;
-
-          updateDashboard();
-
+          transactionsSucceeded++;
           nonce++;
+
           if (delay > 0) await sleep(delay);
         } catch (error) {
-          dashboard.status = `Error: ${error.message}`;
-          updateDashboard();
+          console.error(`Error in transaction: ${error.message}`);
         }
       }
     }
   }
 
+  // After all transactions are completed, print the explorer links
   console.log(purple("\n=== All transactions completed ==="));
+  console.log(`Total Transactions: ${totalTransactions}`);
+  console.log(`Transactions Successfully Completed: ${transactionsSucceeded}`);
+  console.log("\nExplorer Links for All Successful Transactions:");
+  explorerLinks.forEach(link => {
+    console.log(blue(link));
+  });
 };
 
 main().catch(error => console.error("An error occurred:", error.message));
