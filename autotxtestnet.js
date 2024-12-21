@@ -65,7 +65,7 @@ const main = async () => {
       type: "input",
       name: "delay",
       message: "How much delay (in seconds) between transactions?",
-      validate: input => !isNaN(parseInt(input)) && parseInt(input) >= 0,
+      validate: input => !isNaN(input) && input >= 0,
     },
     {
       type: "confirm",
@@ -84,7 +84,7 @@ const main = async () => {
 
   // Parse the network choice
   const networkChoiceIndex = parseInt(answers.networkChoice.split(".")[0]) - 1;
-  const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
+  const { name, rpcUrl, chainId, symbol, explorer } = networks[networkChoiceIndex];
   const { amount, transactionsCount, delay, useListAddresses, singleAddress } = answers;
 
   // Load addresses from listaddress.txt if needed
@@ -164,8 +164,11 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Color the address and hash
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(receipt.transactionHash)}`);
+          // Generate the explorer link for the transaction
+          const explorerLink = `${explorer}/tx/${receipt.transactionHash}`;
+
+          // Color the address and link
+          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
 
           // Increment nonce for the next transaction
           nonce++;
