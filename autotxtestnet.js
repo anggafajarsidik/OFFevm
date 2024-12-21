@@ -14,25 +14,28 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
-// Custom "Created By" logo in ASCII art
+// Custom "Script Created by" logo in ASCII art
 const createdByLogo = `
- ██████╗ ███████╗███████╗    ██████╗ ██████╗  ██████╗      ██╗███████╗ ██████╗████████╗
-██╔═══██╗██╔════╝██╔════╝    ██╔══██╗██╔══██╗██╔═══██╗     ██║██╔════╝██╔════╝╚══██╔══╝
-██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
-██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
-╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═╝   
+${purple(`
+ ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
+██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝
+██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
+██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
+╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
+`)}
 `;
 
 // Simple, direct message
-const creativeMessage = `We’re here to make blockchain easier and better.
+const creativeMessage = `
+${purple(`We’re here to make blockchain easier and better.`)}
 `;
 
 const main = async () => {
   console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
-  console.log(purple(createdByLogo));
-  console.log(purple(creativeMessage));
+  console.log(createdByLogo);
+  console.log(creativeMessage);
 
   // Load configurations
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8")).split("\n").map(key => key.trim()).filter(key => key);
