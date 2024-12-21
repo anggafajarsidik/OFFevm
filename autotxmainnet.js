@@ -82,17 +82,6 @@ const main = async () => {
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
-  for (const privateKey of privateKeys) {
-    try {
-      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-      const balance = await web3.eth.getBalance(account.address);
-      console.log(`\nWallet Address: ${green(account.address)}`);
-      console.log(`Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
-    } catch (error) {
-      console.error(`Error fetching wallet details: ${error.message}`);
-    }
-  }
-
   // Prompt user for further actions
   const answers = await inquirer.prompt([
     {
@@ -104,7 +93,7 @@ const main = async () => {
     {
       type: "input",
       name: "transactionsCount",
-      message: "How many transactions do you want to send?",
+      message: "Enter number of transactions per address:",
       validate: input => !isNaN(parseInt(input)) && parseInt(input) > 0,
     },
     {
@@ -170,13 +159,12 @@ const main = async () => {
       }
     }
 
-    // Display updated balance after transactions
+    // Display final balance after transactions
     try {
       const balance = await web3.eth.getBalance(account.address);
-      console.log(`\nUpdated Wallet Address: ${green(account.address)}`);
-      console.log(`Updated Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
+      console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
     } catch (error) {
-      console.error(`Error fetching updated balance: ${error.message}`);
+      console.error(`Error fetching final balance: ${error.message}`);
     }
   }
 
