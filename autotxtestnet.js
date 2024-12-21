@@ -25,7 +25,6 @@ ${purple(`
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `)}
 `;
-
 // Simple, direct message
 const creativeMessage = `
 ${purple(`We’re here to make blockchain easier and better.`)}
