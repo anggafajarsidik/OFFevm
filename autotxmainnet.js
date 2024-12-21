@@ -14,14 +14,25 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
+// Mapping chain IDs to explorer URLs
+const explorerMap = {
+  1: 'https://etherscan.io/tx/',
+  56: 'https://bscscan.com/tx/',
+  137: 'https://polygonscan.com/tx/',
+  42161: 'https://arbiscan.io/tx/',
+  10: 'https://optimistic.etherscan.io/tx/',
+  324: 'https://explorer.zksync.io/tx/',
+  8453: 'https://basescan.org/tx/'
+};
+
 // Custom ASCII art logo
 const createdByLogo = `
- ██████╗ ███████╗███████╗    ██████╗ ██████╗  ██████╗      ██╗███████╗ ██████╗████████╗
-██╔═══██╗██╔════╝██╔════╝    ██╔══██╗██╔══██╗██╔═══██╗     ██║██╔════╝██╔════╝╚══██╔══╝
-██║   ██║█████╗  █████╗      ██████╔╝██████╔╝██║   ██║     ██║█████╗  ██║        ██║   
-██║   ██║██╔══╝  ██╔══╝      ██╔═══╝ ██╔══██╗██║   ██║██   ██║██╔══╝  ██║        ██║   
-╚██████╔╝██║     ██║         ██║     ██║  ██║╚██████╔╝╚█████╔╝███████╗╚██████╗   ██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═════╝  ╚════╝ ╚══════╝ ╚═╝   
+ ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
+██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝
+██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
+██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
+╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
 
 const creativeMessage = `
@@ -146,7 +157,12 @@ const main = async () => {
 
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(receipt.transactionHash)}`);
+
+          // Generate the explorer link for the transaction
+          const explorerLink = explorerMap[chainId] + receipt.transactionHash;
+
+          // Color the address and link
+          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
