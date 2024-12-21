@@ -151,6 +151,11 @@ const main = async () => {
 
           // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+
+          // Show current balance of sender during transaction
+          const currentBalance = await web3.eth.getBalance(account.address);
+          console.log(`Current balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
+
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
@@ -158,17 +163,20 @@ const main = async () => {
         }
       }
     }
+  }
 
-    // Display final balance after transactions
+  console.log(purple("\n=== All transactions completed ==="));
+
+  // Display final balance after all transactions are completed
+  for (const privateKey of privateKeys) {
     try {
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
       const balance = await web3.eth.getBalance(account.address);
       console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
     } catch (error) {
       console.error(`Error fetching final balance: ${error.message}`);
     }
   }
-
-  console.log(purple("\n=== All transactions completed ==="));
 };
 
 main().catch(error => console.error("An error occurred:", error.message));
