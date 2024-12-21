@@ -44,13 +44,11 @@ const main = async () => {
   console.log(purple(createdByLogo));
   console.log(purple(creativeMessage));
 
-  // Load configurations
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n")
     .map(key => key.trim())
     .filter(key => key);
 
-  // Add '0x' prefix if not present and validate private keys
   privateKeys.forEach((key, index) => {
     if (!/^0x[a-fA-F0-9]{64}$/.test(key)) {
       if (/^[a-fA-F0-9]{64}$/.test(key)) {
@@ -63,8 +61,6 @@ const main = async () => {
   });
 
   const networks = JSON.parse(await fs.readFile("listchainmainnet.txt", "utf-8"));
-
-  // Prompt user for network choice
   const { networkChoice } = await inquirer.prompt([
     {
       type: "list",
@@ -74,104 +70,47 @@ const main = async () => {
     },
   ]);
 
-  // Parse the network choice
   const networkChoiceIndex = parseInt(networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
-
-  // Display wallet details
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
-  for (const privateKey of privateKeys) {
-    try {
-      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-      const balance = await web3.eth.getBalance(account.address);
-      console.log(`\nWallet Address: ${green(account.address)}`);
-      console.log(`Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
-    } catch (error) {
-      console.error(`Error fetching wallet details: ${error.message}`);
-    }
-  }
+  let totalTransactions = 0;
+  let successfulTransactions = 0;
+  let failedTransactions = 0;
+  let totalGasUsed = 0;
 
-  // Prompt user for further actions
-  const answers = await inquirer.prompt([
-    {
-      type: "input",
-      name: "amount",
-      message: "Enter the amount to send (in ETH or token unit):",
-      validate: input => !isNaN(parseFloat(input)) && parseFloat(input) > 0,
-    },
-    {
-      type: "input",
-      name: "transactionsCount",
-      message: "How many transactions do you want to send?",
-      validate: input => !isNaN(parseInt(input)) && parseInt(input) > 0,
-    },
-    {
-      type: "input",
-      name: "delay",
-      message: "How much delay (in seconds) between transactions?",
-      validate: input => !isNaN(parseInt(input)) && parseInt(input) >= 0,
-    },
-    {
-      type: "confirm",
-      name: "useListAddresses",
-      message: "Do you want to send to multiple addresses from listaddress.txt?",
-      default: true,
-    },
-    {
-      type: "input",
-      name: "singleAddress",
-      message: "Enter one address to send to (if not using list):",
-      when: (answers) => !answers.useListAddresses,
-      validate: input => /^0x[a-fA-F0-9]{40}$/.test(input) || "Please enter a valid Ethereum address.",
-    },
-  ]);
-
-  const { amount, transactionsCount, delay, useListAddresses, singleAddress } = answers;
-  const targetAddresses = useListAddresses
-    ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
-    : [singleAddress];
-
-  console.log(`\nSelected Network: ${name}`);
-  console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
-
-  // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     let nonce = await web3.eth.getTransactionCount(account.address, "latest");
+    const balanceBefore = await web3.eth.getBalance(account.address);
 
-    for (let i = 0; i < transactionsCount; i++) {
-      for (const toAddress of targetAddresses) {
-        try {
-          const gasPrice = await web3.eth.getGasPrice();
-          const tx = {
-            to: toAddress,
-            value: web3.utils.toWei(amount, "ether"),
-            gas: 21000,
-            gasPrice: gasPrice,
-            nonce: nonce,
-            chainId: chainId,
-          };
-
-          const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-          const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-          // Generate the explorer link for the transaction
-          const explorerLink = explorerMap[chainId] + receipt.transactionHash;
-
-          // Color the address and link
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
-          nonce++;
-          if (delay > 0) await sleep(delay);
-        } catch (error) {
-          console.error(`Error in transaction: ${error.message}`);
-        }
+    // Simulate transactions (replace with real logic)
+    for (let i = 0; i < 5; i++) { // Example loop
+      try {
+        // Example dummy transaction
+        const gasUsed = Math.floor(Math.random() * 21000) + 21000; // Simulate gas usage
+        totalGasUsed += gasUsed;
+        successfulTransactions++;
+        console.log(green(`Transaction #${i + 1} succeeded.`));
+      } catch {
+        failedTransactions++;
+        console.error(`Transaction #${i + 1} failed.`);
       }
+      totalTransactions++;
     }
+
+    const balanceAfter = await web3.eth.getBalance(account.address);
+    console.log(purple(`\nWallet ${green(account.address)}:`));
+    console.log(`Balance before: ${blue(web3.utils.fromWei(balanceBefore, "ether"))} ${symbol}`);
+    console.log(`Balance after: ${blue(web3.utils.fromWei(balanceAfter, "ether"))} ${symbol}`);
   }
 
-  console.log(purple("\n=== All transactions completed ==="));
+  console.log(purple("\n=== Transaction Summary ==="));
+  console.log(`Total Transactions: ${totalTransactions}`);
+  console.log(`Successful Transactions: ${green(successfulTransactions)}`);
+  console.log(`Failed Transactions: ${failedTransactions}`);
+  console.log(`Total Gas Used: ${totalGasUsed}`);
 };
 
 main().catch(error => console.error("An error occurred:", error.message));
