@@ -34,6 +34,7 @@ const createdByLogo = `
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
+
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
@@ -82,12 +83,34 @@ const main = async () => {
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
+  // Interactive dashboard setup
+  const dashboard = {
+    transactionsCompleted: 0,
+    totalTransactions: 0,
+    currentWallet: '',
+    balance: 0,
+    status: 'Waiting for transaction setup...',
+  };
+
+  // Function to update dashboard
+  const updateDashboard = () => {
+    console.clear();
+    console.log(purple(createdByLogo));
+    console.log(purple(creativeMessage));
+    console.log(purple("\n=== Transaction Dashboard ==="));
+    console.log(`Wallet: ${green(dashboard.currentWallet)}`);
+    console.log(`Balance: ${blue(dashboard.balance)} ${symbol}`);
+    console.log(`Transactions Completed: ${green(dashboard.transactionsCompleted)} of ${dashboard.totalTransactions}`);
+    console.log(`Status: ${green(dashboard.status)}`);
+  };
+
   for (const privateKey of privateKeys) {
     try {
       const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      dashboard.currentWallet = account.address;
       const balance = await web3.eth.getBalance(account.address);
-      console.log(`\nWallet Address: ${green(account.address)}`);
-      console.log(`Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
+      dashboard.balance = web3.utils.fromWei(balance, "ether");
+      updateDashboard();
     } catch (error) {
       console.error(`Error fetching wallet details: ${error.message}`);
     }
@@ -136,6 +159,8 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
+  dashboard.totalTransactions = transactionsCount * targetAddresses.length;
+
   // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
@@ -160,12 +185,17 @@ const main = async () => {
           // Generate the explorer link for the transaction
           const explorerLink = explorerMap[chainId] + receipt.transactionHash;
 
-          // Color the address and link
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+          // Update transaction progress
+          dashboard.transactionsCompleted++;
+          dashboard.status = `Transaction to ${green(toAddress)} successful!`;
+
+          updateDashboard();
+
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
-          console.error(`Error in transaction: ${error.message}`);
+          dashboard.status = `Error: ${error.message}`;
+          updateDashboard();
         }
       }
     }
