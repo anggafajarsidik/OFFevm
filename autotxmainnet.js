@@ -32,9 +32,8 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
 ██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚══  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
-
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
@@ -79,12 +78,20 @@ const main = async () => {
   const networkChoiceIndex = parseInt(networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
 
+  // Display wallet details
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
-  let totalTransactions = 0;
-  let transactionsSucceeded = 0;
-  const explorerLinks = [];
+  for (const privateKey of privateKeys) {
+    try {
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      const balance = await web3.eth.getBalance(account.address);
+      console.log(`\nWallet Address: ${green(account.address)}`);
+      console.log(`Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
+    } catch (error) {
+      console.error(`Error fetching wallet details: ${error.message}`);
+    }
+  }
 
   // Prompt user for further actions
   const answers = await inquirer.prompt([
@@ -129,8 +136,6 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
-  totalTransactions = transactionsCount * targetAddresses.length;
-
   // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
@@ -152,15 +157,12 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Add explorer link to the list
+          // Generate the explorer link for the transaction
           const explorerLink = explorerMap[chainId] + receipt.transactionHash;
-          explorerLinks.push(explorerLink);
 
-          transactionsSucceeded++;
+          // Color the address and link
+          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
           nonce++;
-
-          // Display progress
-          console.log(`Transaction ${transactionsSucceeded}/${totalTransactions} sent successfully.`);
           if (delay > 0) await sleep(delay);
         } catch (error) {
           console.error(`Error in transaction: ${error.message}`);
@@ -169,19 +171,7 @@ const main = async () => {
     }
   }
 
-  // After all transactions are completed, show the final balance and explorer links
   console.log(purple("\n=== All transactions completed ==="));
-  console.log(`Total Transactions: ${totalTransactions}`);
-  console.log(`Transactions Successfully Completed: ${transactionsSucceeded}`);
-
-  // Fetch final balance after all transactions
-  const finalBalance = await web3.eth.getBalance(account.address);
-  console.log(`\nFinal Balance: ${blue(web3.utils.fromWei(finalBalance, "ether"))} ${symbol}`);
-
-  console.log("\nExplorer Links for All Successful Transactions:");
-  explorerLinks.forEach(link => {
-    console.log(blue(link));
-  });
 };
 
 main().catch(error => console.error("An error occurred:", error.message));
