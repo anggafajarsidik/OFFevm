@@ -34,7 +34,6 @@ const createdByLogo = `
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
-
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
