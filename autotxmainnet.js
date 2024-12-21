@@ -169,6 +169,15 @@ const main = async () => {
         }
       }
     }
+
+    // Display updated balance after transactions
+    try {
+      const balance = await web3.eth.getBalance(account.address);
+      console.log(`\nUpdated Wallet Address: ${green(account.address)}`);
+      console.log(`Updated Balance: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
+    } catch (error) {
+      console.error(`Error fetching updated balance: ${error.message}`);
+    }
   }
 
   console.log(purple("\n=== All transactions completed ==="));
