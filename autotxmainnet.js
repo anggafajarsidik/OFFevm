@@ -47,7 +47,7 @@ let report = {
   totalTransactions: 0,
   totalFailed: 0,
   totalAmountTransferred: 0,
-  totalGasUsed: 0,
+  totalFee: 0,
   errors: [],
 };
 
@@ -166,13 +166,16 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Generate the explorer link for the transaction
-          const explorerLink = explorerMap[chainId] + receipt.transactionHash;
+          // Calculate the fee for this transaction
+          const fee = receipt.gasUsed * gasPrice;
+          report.totalFee += web3.utils.fromWei(fee.toString(), 'ether');
 
-          // Update report data
+          // Update other report data
           report.totalTransactions++;
           report.totalAmountTransferred += parseFloat(amount);
-          report.totalGasUsed += Number(receipt.gasUsed);
+
+          // Generate the explorer link for the transaction
+          const explorerLink = explorerMap[chainId] + receipt.transactionHash;
 
           // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
@@ -206,7 +209,7 @@ const main = async () => {
   console.log(`Total Transactions: ${green(report.totalTransactions)}`);
   console.log(`Total Failed Transactions: ${red(report.totalFailed)}`);
   console.log(`Total Amount Transferred: ${green(report.totalAmountTransferred)} ${symbol}`);
-  console.log(`Total Gas Used: ${green(report.totalGasUsed)} gas`);
+  console.log(`Total Fee: ${green(report.totalFee)} ETH`);
   if (report.errors.length > 0) {
     console.log("\nErrors:");
     report.errors.forEach((error, index) => {
