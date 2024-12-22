@@ -25,19 +25,26 @@ ${purple(`
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `)}
 `;
+
 // Simple, direct message
 const creativeMessage = `
 ${purple(`We’re here to make blockchain easier and better.`)}
 `;
 
 const main = async () => {
+  // Clear the terminal
+  console.clear();
+
   console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
   console.log(createdByLogo);
   console.log(creativeMessage);
 
   // Load configurations
-  const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8")).split("\n").map(key => key.trim()).filter(key => key);
+  const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
+    .split("\n")
+    .map(key => key.trim())
+    .filter(key => key);
   const networks = JSON.parse(await fs.readFile("listchaintestnet.txt", "utf-8"));
 
   // Prompt user for required inputs
@@ -147,13 +154,13 @@ const main = async () => {
           }));
 
           // Increase the gas estimate if needed (add 10% buffer)
-          const gasLimit = BigInt(Math.ceil(Number(gasEstimate) * 1.10));  // Adding a 10% buffer to the estimated gas
+          const gasLimit = BigInt(Math.ceil(Number(gasEstimate) * 1.10));
 
           // Create the transaction object
           const tx = {
-            to: toAddress, // Current target address
+            to: toAddress,
             value: amountInWei,
-            gas: gasLimit,  // Use adjusted gas limit
+            gas: gasLimit,
             gasPrice: BigInt(gasPrice),
             nonce: nonce,
             chainId: chainId,
