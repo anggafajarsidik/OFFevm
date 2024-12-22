@@ -14,6 +14,9 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
+// Function to print in red color
+const red = (text) => `\x1b[31m${text}\x1b[0m`;
+
 // Mapping chain IDs to explorer URLs
 const explorerMap = {
   1: 'https://etherscan.io/tx/',
@@ -145,7 +148,7 @@ const main = async () => {
   // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-    let nonce = await web3.eth.getTransactionCount(account.address, "latest");
+    let nonce = await web3.eth.getTransactionCount(account.address, "pending"); // Ensure correct nonce
 
     for (let i = 0; i < transactionsCount; i++) {
       for (const toAddress of targetAddresses) {
@@ -169,7 +172,7 @@ const main = async () => {
           // Update report data
           report.totalTransactions++;
           report.totalAmountTransferred += parseFloat(amount);
-          report.totalGasUsed += receipt.gasUsed;
+          report.totalGasUsed += Number(receipt.gasUsed);
 
           // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
@@ -202,12 +205,12 @@ const main = async () => {
   console.log(purple("\n=== Analytics Report ==="));
   console.log(`Total Transactions: ${green(report.totalTransactions)}`);
   console.log(`Total Failed Transactions: ${red(report.totalFailed)}`);
-  console.log(`Total Amount Transferred: ${green(report.totalAmountTransferred)} ETH`);
-  console.log(`Total Gas Used: ${green(report.totalGasUsed)}`);
+  console.log(`Total Amount Transferred: ${green(report.totalAmountTransferred)} ${symbol}`);
+  console.log(`Total Gas Used: ${green(report.totalGasUsed)} gas`);
   if (report.errors.length > 0) {
-    console.log(`Errors:`);
+    console.log("\nErrors:");
     report.errors.forEach((error, index) => {
-      console.log(`${index + 1}. ${error}`);
+      console.log(`${red(index + 1)}: ${error}`);
     });
   }
 };
