@@ -14,9 +14,6 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
-// Function to print in red color
-const red = (text) => `\x1b[31m${text}\x1b[0m`;
-
 // Mapping chain IDs to explorer URLs
 const explorerMap = {
   1: 'https://etherscan.io/tx/',
@@ -37,19 +34,9 @@ const createdByLogo = `
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
-
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
-
-// Analytics report data
-let report = {
-  totalTransactions: 0,
-  totalFailed: 0,
-  totalAmountTransferred: 0,
-  totalFee: 0,
-  errors: [],
-};
 
 const main = async () => {
   console.log(purple("=== Starting the process ==="));
@@ -148,7 +135,7 @@ const main = async () => {
   // Process transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-    let nonce = await web3.eth.getTransactionCount(account.address, "pending"); // Ensure correct nonce
+    let nonce = await web3.eth.getTransactionCount(account.address, "latest");
 
     for (let i = 0; i < transactionsCount; i++) {
       for (const toAddress of targetAddresses) {
@@ -166,14 +153,6 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Calculate the fee for this transaction
-          const fee = receipt.gasUsed * gasPrice;
-          report.totalFee += web3.utils.fromWei(fee.toString(), 'ether');
-
-          // Update other report data
-          report.totalTransactions++;
-          report.totalAmountTransferred += parseFloat(amount);
-
           // Generate the explorer link for the transaction
           const explorerLink = explorerMap[chainId] + receipt.transactionHash;
 
@@ -184,8 +163,6 @@ const main = async () => {
           if (delay > 0) await sleep(delay);
         } catch (error) {
           console.error(`Error in transaction: ${error.message}`);
-          report.totalFailed++;
-          report.errors.push(error.message);
         }
       }
     }
@@ -202,19 +179,6 @@ const main = async () => {
     } catch (error) {
       console.error(`Error fetching final balance: ${error.message}`);
     }
-  }
-
-  // Display the analytics report
-  console.log(purple("\n=== Analytics Report ==="));
-  console.log(`Total Transactions: ${green(report.totalTransactions)}`);
-  console.log(`Total Failed Transactions: ${red(report.totalFailed)}`);
-  console.log(`Total Amount Transferred: ${green(report.totalAmountTransferred)} ${symbol}`);
-  console.log(`Total Fee: ${green(report.totalFee)} ETH`);
-  if (report.errors.length > 0) {
-    console.log("\nErrors:");
-    report.errors.forEach((error, index) => {
-      console.log(`${red(index + 1)}: ${error}`);
-    });
   }
 };
 
