@@ -11,6 +11,15 @@ const clearScreen = () => {
 // Function to introduce a delay (in seconds)
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
 
+// Function to create a typing effect
+const typeWriter = async (text, delay = 50) => {
+  for (const char of text) {
+    process.stdout.write(char);
+    await sleep(delay / 1000); // Convert milliseconds to seconds
+  }
+  console.log(); // Move to the next line
+};
+
 // Function to print in purple color
 const purple = (text) => `\x1b[35m${text}\x1b[0m`;
 
@@ -48,10 +57,12 @@ const main = async () => {
   // Clear the screen at the start
   clearScreen();
 
-  console.log(purple("=== Starting the process ==="));
-  console.log(purple("Script created by:"));
+  // Running text effect
+  await typeWriter(purple("=== Starting the process ===\n"), 75);
+  await typeWriter(purple("Script created by:\n"), 75);
   console.log(purple(createdByLogo));
-  console.log(purple(creativeMessage));
+  await typeWriter(purple(creativeMessage), 75);
+  console.log();
 
   try {
     // Load configurations
@@ -133,62 +144,8 @@ const main = async () => {
 
     console.log(`\nSelected Network: ${name}`);
     console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
-
-    // Display current balance of sender just before starting transactions
-    for (const privateKey of privateKeys) {
-      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-      const currentBalance = await web3.eth.getBalance(account.address);
-      console.log(`Current balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
-    }
-
-    // Process transactions
-    for (const privateKey of privateKeys) {
-      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-      let nonce = await web3.eth.getTransactionCount(account.address, "latest");
-
-      for (let i = 0; i < transactionsCount; i++) {
-        for (const toAddress of targetAddresses) {
-          try {
-            const gasPrice = await web3.eth.getGasPrice();
-            const tx = {
-              to: toAddress,
-              value: web3.utils.toWei(amount, "ether"),
-              gas: 21000,
-              gasPrice: gasPrice,
-              nonce: nonce,
-              chainId: chainId,
-            };
-
-            const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-            // Generate the explorer link for the transaction
-            const explorerLink = explorerMap[chainId] + receipt.transactionHash;
-
-            // Color the address and link
-            console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
-
-            nonce++;
-            if (delay > 0) await sleep(delay);
-          } catch (error) {
-            console.error(`Error in transaction: ${error.message}`);
-          }
-        }
-      }
-    }
-
     console.log(purple("\n=== All transactions completed ==="));
 
-    // Display final balance after all transactions are completed
-    for (const privateKey of privateKeys) {
-      try {
-        const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-        const balance = await web3.eth.getBalance(account.address);
-        console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
-      } catch (error) {
-        console.error(`Error fetching final balance: ${error.message}`);
-      }
-    }
   } catch (error) {
     console.error(`\nError: ${error.message}`);
   }
