@@ -14,6 +14,9 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
+// Function to print in cyan color
+const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
+
 // Custom "Script Created by" logo in ASCII art
 const createdByLogo = `
 ${purple(`
@@ -98,7 +101,7 @@ const main = async () => {
     ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
     : [singleAddress];
 
-  console.log(`\nYou have selected the ${name} network.`);
+  console.log(`\nYou have selected the network: ${cyan(name)}.`);
 
   // Ensure private keys are correctly formatted
   privateKeys.forEach(key => {
@@ -143,20 +146,14 @@ const main = async () => {
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
-          // Convert amount to BigInt
           const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-
-          // Estimate gas needed for this transaction
           const gasEstimate = BigInt(await web3.eth.estimateGas({
             from: account.address,
             to: toAddress,
             value: amountInWei,
           }));
-
-          // Increase the gas estimate if needed (add 10% buffer)
           const gasLimit = BigInt(Math.ceil(Number(gasEstimate) * 1.10));
 
-          // Create the transaction object
           const tx = {
             to: toAddress,
             value: amountInWei,
@@ -166,20 +163,13 @@ const main = async () => {
             chainId: chainId,
           };
 
-          // Sign and send the transaction
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          // Generate the explorer link for the transaction
           const explorerLink = `${explorer}/tx/${receipt.transactionHash}`;
-
-          // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
 
-          // Increment nonce for the next transaction
           nonce++;
-
-          // Wait for the specified delay before sending the next transaction
           if (delay > 0) {
             console.log(`Waiting for ${delay} seconds before sending the next transaction...`);
             await sleep(delay);
