@@ -105,7 +105,7 @@ const main = async () => {
     const web3 = new Web3(rpcUrl);
 
     // Display current balance for each sender
-    console.log(purple("\n=== Current Balances ==="));
+    console.log(purple("\nCurrent balance of sender (address):"));
     for (const privateKey of privateKeys) {
       const account = web3.eth.accounts.privateKeyToAccount(privateKey);
       const currentBalance = await web3.eth.getBalance(account.address);
@@ -191,7 +191,7 @@ const main = async () => {
     console.log(purple("\n=== All transactions completed ==="));
 
     // Display final balances
-    console.log(purple("\n=== Final Balances ==="));
+    console.log(purple("\nFinal balance of sender (address):"));
     for (const privateKey of privateKeys) {
       const account = web3.eth.accounts.privateKeyToAccount(privateKey);
       const balance = await web3.eth.getBalance(account.address);
