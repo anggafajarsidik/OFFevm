@@ -2,17 +2,16 @@ import Web3 from 'web3';
 import fs from 'fs/promises';
 import inquirer from 'inquirer';
 
-// Function to clear the screen
+// Function to clear the terminal screen
 const clearScreen = () => {
   console.clear();
-  console.log('\x1Bc'); // Additional escape sequence for compatibility
 };
 
 // Function to introduce a delay (in seconds)
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
 
-// Function to create a typing effect
-const typeWriter = async (text, delay = 50) => {
+// Function to create a running text effect
+const runningText = async (text, delay = 75) => {
   for (const char of text) {
     process.stdout.write(char);
     await sleep(delay / 1000); // Convert milliseconds to seconds
@@ -37,7 +36,7 @@ const explorerMap = {
   42161: 'https://arbiscan.io/tx/',
   10: 'https://optimistic.etherscan.io/tx/',
   324: 'https://explorer.zksync.io/tx/',
-  8453: 'https://basescan.org/tx/'
+  8453: 'https://basescan.org/tx/',
 };
 
 // Custom ASCII art logo
@@ -49,19 +48,20 @@ const createdByLogo = `
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
+
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
 
 const main = async () => {
-  // Clear the screen at the start
+  // Clear the terminal screen
   clearScreen();
 
-  // Running text effect
-  await typeWriter(purple("=== Starting the process ===\n"), 75);
-  await typeWriter(purple("Script created by:\n"), 75);
+  // Display a cool running text effect for the intro
+  await runningText(purple("=== Starting the process ===\n"), 75);
+  await runningText(purple("Script created by:\n"), 75);
   console.log(purple(createdByLogo));
-  await typeWriter(purple(creativeMessage), 75);
+  await runningText(purple(creativeMessage), 75);
   console.log();
 
   try {
@@ -98,9 +98,16 @@ const main = async () => {
     const networkChoiceIndex = parseInt(networkChoice.split(".")[0]) - 1;
     const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
 
-    // Display wallet details
     console.log(purple(`\nConnecting to the ${name} network...`));
     const web3 = new Web3(rpcUrl);
+
+    // Display current balance for each sender
+    console.log(purple("\n=== Current Balances ==="));
+    for (const privateKey of privateKeys) {
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      const currentBalance = await web3.eth.getBalance(account.address);
+      console.log(`Sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
+    }
 
     // Prompt user for further actions
     const answers = await inquirer.prompt([
@@ -144,7 +151,49 @@ const main = async () => {
 
     console.log(`\nSelected Network: ${name}`);
     console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
+
+    // Process transactions
+    for (const privateKey of privateKeys) {
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      let nonce = await web3.eth.getTransactionCount(account.address, "latest");
+
+      for (let i = 0; i < transactionsCount; i++) {
+        for (const toAddress of targetAddresses) {
+          try {
+            const gasPrice = await web3.eth.getGasPrice();
+            const tx = {
+              to: toAddress,
+              value: web3.utils.toWei(amount, "ether"),
+              gas: 21000,
+              gasPrice: gasPrice,
+              nonce: nonce,
+              chainId: chainId,
+            };
+
+            const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+            const explorerLink = explorerMap[chainId] + receipt.transactionHash;
+            console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+
+            nonce++;
+            if (delay > 0) await sleep(delay);
+          } catch (error) {
+            console.error(`Error in transaction: ${error.message}`);
+          }
+        }
+      }
+    }
+
     console.log(purple("\n=== All transactions completed ==="));
+
+    // Display final balances
+    console.log(purple("\n=== Final Balances ==="));
+    for (const privateKey of privateKeys) {
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      const balance = await web3.eth.getBalance(account.address);
+      console.log(`Sender ${green(account.address)}: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
+    }
 
   } catch (error) {
     console.error(`\nError: ${error.message}`);
