@@ -40,6 +40,7 @@ We’re here to make blockchain easier and better.
 `;
 
 const main = async () => {
+  console.clear();
   console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
   console.log(purple(createdByLogo));
@@ -79,7 +80,6 @@ const main = async () => {
   const networkChoiceIndex = parseInt(networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, symbol } = networks[networkChoiceIndex];
 
-  // Display wallet details
   console.log(purple(`\nConnecting to the ${name} network...`));
   const web3 = new Web3(rpcUrl);
 
