@@ -1,7 +1,6 @@
 import Web3 from 'web3';
 import fs from 'fs/promises';
 import inquirer from 'inquirer';
-import { createWriteStream } from 'fs';
 
 // Function to introduce a delay (in seconds)
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -35,9 +34,19 @@ const createdByLogo = `
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `;
+
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
+
+// Analytics report data
+let report = {
+  totalTransactions: 0,
+  totalFailed: 0,
+  totalAmountTransferred: 0,
+  totalGasUsed: 0,
+  errors: [],
+};
 
 const main = async () => {
   console.log(purple("=== Starting the process ==="));
@@ -126,10 +135,6 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
-  // Open CSV file for analytics report
-  const csvStream = createWriteStream('analytics-report.csv', { flags: 'w' });
-  csvStream.write('Sender,Recipient,Amount,Status,ExplorerLink\n');
-
   // Display current balance of sender just before starting transactions
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
@@ -161,25 +166,26 @@ const main = async () => {
           // Generate the explorer link for the transaction
           const explorerLink = explorerMap[chainId] + receipt.transactionHash;
 
-          // Write to CSV report
-          csvStream.write(`${account.address},${toAddress},${amount},SUCCESS,${explorerLink}\n`);
+          // Update report data
+          report.totalTransactions++;
+          report.totalAmountTransferred += parseFloat(amount);
+          report.totalGasUsed += receipt.gasUsed;
 
+          // Color the address and link
           console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
 
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
           console.error(`Error in transaction: ${error.message}`);
-          csvStream.write(`${account.address},${toAddress},${amount},FAILED,\n`);
+          report.totalFailed++;
+          report.errors.push(error.message);
         }
       }
     }
   }
 
   console.log(purple("\n=== All transactions completed ==="));
-
-  // Close the CSV stream
-  csvStream.end();
 
   // Display final balance after all transactions are completed
   for (const privateKey of privateKeys) {
@@ -190,6 +196,19 @@ const main = async () => {
     } catch (error) {
       console.error(`Error fetching final balance: ${error.message}`);
     }
+  }
+
+  // Display the analytics report
+  console.log(purple("\n=== Analytics Report ==="));
+  console.log(`Total Transactions: ${green(report.totalTransactions)}`);
+  console.log(`Total Failed Transactions: ${red(report.totalFailed)}`);
+  console.log(`Total Amount Transferred: ${green(report.totalAmountTransferred)} ETH`);
+  console.log(`Total Gas Used: ${green(report.totalGasUsed)}`);
+  if (report.errors.length > 0) {
+    console.log(`Errors:`);
+    report.errors.forEach((error, index) => {
+      console.log(`${index + 1}. ${error}`);
+    });
   }
 };
 
