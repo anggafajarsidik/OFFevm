@@ -14,6 +14,15 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
+// Function to create a running text effect
+const runningText = async (text, delay = 50) => {
+  for (const char of text) {
+    process.stdout.write(char);
+    await sleep(delay / 1000); // Delay in seconds
+  }
+  console.log();
+};
+
 // Mapping chain IDs to explorer URLs
 const explorerMap = {
   1: 'https://etherscan.io/tx/',
@@ -22,7 +31,7 @@ const explorerMap = {
   42161: 'https://arbiscan.io/tx/',
   10: 'https://optimistic.etherscan.io/tx/',
   324: 'https://explorer.zksync.io/tx/',
-  8453: 'https://basescan.org/tx/'
+  8453: 'https://basescan.org/tx/',
 };
 
 // Custom ASCII art logo
@@ -41,7 +50,7 @@ We’re here to make blockchain easier and better.
 
 const main = async () => {
   console.clear();
-  console.log(purple("=== Starting the process ==="));
+  await runningText("=== Starting the process ===\n", 75);
   console.log(purple("Script created by:"));
   console.log(purple(createdByLogo));
   console.log(purple(creativeMessage));
