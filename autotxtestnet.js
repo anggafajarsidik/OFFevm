@@ -67,7 +67,7 @@ const main = async () => {
     {
       type: "input",
       name: "transactionsCount",
-      message: "How many transactions do you want to send?",
+      message: "Enter the number of transactions per address:",
       validate: input => !isNaN(parseInt(input)) && parseInt(input) > 0,
     },
     {
