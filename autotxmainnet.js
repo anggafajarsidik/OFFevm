@@ -28,6 +28,9 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 // Function to print in green color
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 
+// Function to print in yellow color
+const yellow = (text) => `\x1b[33m${text}\x1b[0m`;
+
 // Mapping chain IDs to explorer URLs
 const explorerMap = {
   1: 'https://etherscan.io/tx/',
@@ -106,7 +109,7 @@ const main = async () => {
     for (const privateKey of privateKeys) {
       const account = web3.eth.accounts.privateKeyToAccount(privateKey);
       const currentBalance = await web3.eth.getBalance(account.address);
-      console.log(`Sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
+      console.log(`Sender ${green(account.address)}: ${yellow(web3.utils.fromWei(currentBalance, "ether"))} ${symbol}`);
     }
 
     // Prompt user for further actions
