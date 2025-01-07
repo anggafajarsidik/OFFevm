@@ -29,7 +29,6 @@ ${purple(`
 `)}
 `;
 
-// Simple, direct message
 const creativeMessage = `
 ${purple(`We’re here to make blockchain easier and better.`)}
 `;
@@ -142,7 +141,8 @@ const main = async () => {
       console.log(`\nSending transaction #${i + 1} from wallet with private key ${privateKey.slice(0, 6)}...`);
 
       try {
-        const gasPrice = await web3.eth.getGasPrice();
+        const baseGasPrice = await web3.eth.getGasPrice();
+        const gasPrice = BigInt(baseGasPrice) * 15n / 10n; // Tambahkan 50% ke gas price dasar
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
@@ -158,7 +158,7 @@ const main = async () => {
             to: toAddress,
             value: amountInWei,
             gas: gasLimit,
-            gasPrice: BigInt(gasPrice),
+            gasPrice: gasPrice,
             nonce: nonce,
             chainId: chainId,
           };
