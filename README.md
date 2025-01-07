@@ -62,7 +62,7 @@ Create the following files in the project directory:
    node autotxmainnet.js
    ```
 ---
-## **If you got error "Cannot convert a BigInt value to a number"**
+## **If you got error or stuck
 1. Execute this command :
 ```bash
    npm audit fix --force
