@@ -30,9 +30,15 @@ ${purple(`
 `;
 
 // Simple, direct message
-const creativeMessage = `
-${purple(`We’re here to make blockchain easier and better.`)}
-`;
+const creativeMessage = `\n${purple(`We’re here to make blockchain easier and better.`)}\n`;
+
+// Function to fetch with timeout
+const fetchWithTimeout = (promise, timeoutMs) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout exceeded")), timeoutMs))
+  ]);
+};
 
 const main = async () => {
   // Clear the terminal
@@ -103,62 +109,33 @@ const main = async () => {
 
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
 
-  // Ensure private keys are correctly formatted
-  privateKeys.forEach(key => {
-    if (!/^([a-fA-F0-9]{64})$/.test(key)) {
-      console.error(`Invalid private key format: ${key}`);
-      process.exit(1);
-    }
-  });
-
-  // Add '0x' prefix to private keys if not present
-  const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
-
   // Loop through all private keys (wallets)
-  for (const privateKey of privateKeysWithPrefix) {
+  for (const privateKey of privateKeys) {
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 
-    // Function to fetch nonce with retries
-    const getNonceWithRetries = async (address, maxRetries = 5) => {
-      let retries = 0;
-      while (retries < maxRetries) {
-        try {
-          return await web3.eth.getTransactionCount(address, "pending");
-        } catch (error) {
-          retries++;
-          console.error(`Error fetching nonce, retrying (${retries}/${maxRetries})...`);
-          await sleep(1);
-        }
-      }
-      throw new Error("Failed to fetch nonce after multiple retries");
-    };
+    let nonce = await fetchWithTimeout(web3.eth.getTransactionCount(account.address, "pending"), 5000);
 
-    // Get the initial nonce for the wallet
-    let nonce = await getNonceWithRetries(account.address);
-
-    // Loop through the number of transactions the user wants to send
     for (let i = 0; i < transactionsCount; i++) {
       console.log(`\nSending transaction #${i + 1} from wallet with private key ${privateKey.slice(0, 6)}...`);
 
       try {
-        const gasPrice = await web3.eth.getGasPrice();
+        const gasPrice = await fetchWithTimeout(web3.eth.getGasPrice(), 5000);
 
         // Loop through all target addresses
         for (const toAddress of targetAddresses) {
-          const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-          const gasEstimate = BigInt(await web3.eth.estimateGas({
+          const amountInWei = web3.utils.toWei(amount, "ether");
+          const gasEstimate = await web3.eth.estimateGas({
             from: account.address,
             to: toAddress,
             value: amountInWei,
-          }));
-          const gasLimit = BigInt(Math.ceil(Number(gasEstimate) * 1.10));
+          });
 
           const tx = {
             to: toAddress,
             value: amountInWei,
-            gas: gasLimit,
-            gasPrice: BigInt(gasPrice),
+            gas: Math.ceil(gasEstimate * 1.2), // Increase gas limit by 20%
+            gasPrice: BigInt(gasPrice) * BigInt(2), // Increase gas price (2x)
             nonce: nonce,
             chainId: chainId,
           };
@@ -166,24 +143,8 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          const explorerLink = `${explorer}/tx/${receipt.transactionHash}`;
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
-
+          console.log(`Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
           nonce++;
-          if (delay > 0) {
-            console.log(`Waiting for ${delay} seconds before sending the next transaction...`);
-            await sleep(delay);
-          }
+          if (delay > 0) await sleep(delay);
         }
-      } catch (error) {
-        console.error(`Error sending transaction #${i + 1}:`, error.message);
       }
-    }
-  }
-
-  console.log(purple("=== All transactions completed ==="));
-};
-
-main().catch(error => {
-  console.error("An error occurred:", error.message);
-});
