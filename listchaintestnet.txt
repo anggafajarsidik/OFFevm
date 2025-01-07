@@ -1,7 +1,7 @@
 [
   {
     "name": "ETH Sepolia Testnet",
-    "rpcUrl": "https://sepolia.drpc.org",
+    "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com",
     "chainId": "11155111",
     "symbol": "ETH",
     "explorer": "https://sepolia.etherscan.io"
