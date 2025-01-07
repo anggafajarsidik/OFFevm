@@ -26,19 +26,11 @@ ${purple(`
 ██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
-`)}
+`)}`;
+
+const creativeMessage = `
+${purple(`We’re here to make blockchain easier and better.`)}
 `;
-
-// Simple, direct message
-const creativeMessage = `\n${purple(`We’re here to make blockchain easier and better.`)}\n`;
-
-// Function to fetch with timeout
-const fetchWithTimeout = (promise, timeoutMs) => {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout exceeded")), timeoutMs))
-  ]);
-};
 
 const main = async () => {
   // Clear the terminal
@@ -109,33 +101,31 @@ const main = async () => {
 
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
 
-  // Loop through all private keys (wallets)
-  for (const privateKey of privateKeys) {
+  // Add '0x' prefix to private keys if not present
+  const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
+
+  for (const privateKey of privateKeysWithPrefix) {
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 
-    let nonce = await fetchWithTimeout(web3.eth.getTransactionCount(account.address, "pending"), 5000);
+    // Fetch initial nonce
+    let nonce = await web3.eth.getTransactionCount(account.address, "pending");
 
     for (let i = 0; i < transactionsCount; i++) {
       console.log(`\nSending transaction #${i + 1} from wallet with private key ${privateKey.slice(0, 6)}...`);
 
       try {
-        const gasPrice = await fetchWithTimeout(web3.eth.getGasPrice(), 5000);
+        const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n; // Double the gas price for faster processing
 
-        // Loop through all target addresses
         for (const toAddress of targetAddresses) {
-          const amountInWei = web3.utils.toWei(amount, "ether");
-          const gasEstimate = await web3.eth.estimateGas({
-            from: account.address,
-            to: toAddress,
-            value: amountInWei,
-          });
+          const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+          const gasLimit = BigInt(21000); // Standard gas limit for ETH transfer
 
           const tx = {
             to: toAddress,
             value: amountInWei,
-            gas: Math.ceil(gasEstimate * 1.2), // Increase gas limit by 20%
-            gasPrice: BigInt(gasPrice) * BigInt(2), // Increase gas price (2x)
+            gas: gasLimit,
+            gasPrice: gasPrice,
             nonce: nonce,
             chainId: chainId,
           };
@@ -143,8 +133,24 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-          console.log(`Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+          const explorerLink = `${explorer}/tx/${receipt.transactionHash}`;
+          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+
           nonce++;
-          if (delay > 0) await sleep(delay);
+          if (delay > 0) {
+            console.log(`Waiting for ${delay} seconds before sending the next transaction...`);
+            await sleep(delay);
+          }
         }
+      } catch (error) {
+        console.error(`Error sending transaction #${i + 1}:`, error.message);
       }
+    }
+  }
+
+  console.log(purple("=== All transactions completed ==="));
+};
+
+main().catch(error => {
+  console.error("An error occurred:", error.message);
+});
