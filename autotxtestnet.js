@@ -76,18 +76,21 @@ const main = async () => {
     : [];
 
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
-  
-  const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
-  console.log(`Using ${privateKeysWithPrefix.length} wallet(s) for transactions.`);
+  console.log(`Total wallets to use: ${privateKeys.length}`);
+  console.log(`Total recipient addresses: ${targetAddresses.length || "Each wallet will send to itself"}`);
 
-  for (const privateKey of privateKeysWithPrefix) {
+  const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
+
+  for (let walletIndex = 0; walletIndex < privateKeysWithPrefix.length; walletIndex++) {
+    const privateKey = privateKeysWithPrefix[walletIndex];
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     let nonce = await web3.eth.getTransactionCount(account.address, "pending");
-    console.log(`\nStarting transactions for Wallet: ${green(account.address)}`);
+    
+    console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
     
     for (let i = 0; i < transactionsCount; i++) {
-      console.log(`\nSending transaction #${i + 1} from ${green(account.address)}...`);
+      console.log(`\n🚀 Sending transaction #${i + 1} from ${green(account.address)}...`);
       let success = false;
       
       while (!success) {
@@ -97,7 +100,7 @@ const main = async () => {
           const gasLimit = BigInt(21000);
           
           const toAddress = useListAddresses ? targetAddresses[i % targetAddresses.length] : account.address;
-          console.log(`Transaction target: ${green(toAddress)}`);
+          console.log(`📍 Transaction target: ${green(toAddress)}`);
 
           const tx = {
             to: toAddress,
@@ -111,22 +114,22 @@ const main = async () => {
           const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
           
-          console.log(`Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+          console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
           success = true;
           nonce++;
           
           if (delay > 0) {
-            console.log(`Waiting for ${delay} seconds before next transaction...`);
+            console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
             await sleep(delay);
           }
         } catch (error) {
-          console.error(`Transaction failed from ${green(account.address)}, retrying in ${retryDelay} seconds...`, error.message);
+          console.error(`❌ Transaction failed from ${green(account.address)}, retrying in ${retryDelay} seconds...`, error.message);
           await sleep(retryDelay);
         }
       }
     }
   }
-  console.log(purple("=== All transactions completed ==="));
+  console.log(purple("🎉 === All transactions completed ==="));
 };
 
 main().catch(error => {
