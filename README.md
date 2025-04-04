@@ -1,8 +1,13 @@
 ## **Features**
-- Send transactions to multiple addresses from a list or Single address
+- Sends transactions to multiple addresses from a list or a single address.
 - Supports custom delay between transactions.
 - Easy configuration for different networks.
-- Multiple Wallet
+- Supports multiple wallets.
+- Automatically retries failed transactions due to RPC errors, gas issues, or timeouts.
+- Fetches gas price dynamically and ensures correct nonce.
+- Skips sending to smart contract addresses.
+- Logs transaction status and errors in real time.
+-Never stops trying, always resumes from where it failed.
 ---
 
 ## **Requirements**
