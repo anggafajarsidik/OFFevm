@@ -3,8 +3,8 @@ import fs from 'fs/promises';
 import inquirer from 'inquirer';
 
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+
 const purple = (text) => `\x1b[35m${text}\x1b[0m`;
-const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
 
@@ -114,7 +114,7 @@ const main = async () => {
             const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
             const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-            console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+            console.log(`✅ Transaction successful: ${cyan(`${explorer}/tx/${receipt.transactionHash}`)}`);
             success = true;
 
             if (delay > 0) {
