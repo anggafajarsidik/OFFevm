@@ -43,12 +43,6 @@ const main = async () => {
     },
     {
       type: "input",
-      name: "transactionsCount",
-      message: "Enter the number of transactions per address:",
-      validate: input => !isNaN(parseInt(input)) && parseInt(input) > 0,
-    },
-    {
-      type: "input",
       name: "delay",
       message: "How much delay (in seconds) between transactions?",
       validate: input => !isNaN(input) && input >= 0,
@@ -69,7 +63,7 @@ const main = async () => {
 
   const networkChoiceIndex = parseInt(answers.networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, explorer } = networks[networkChoiceIndex];
-  const { amount, transactionsCount, delay, retryDelay, useListAddresses } = answers;
+  const { amount, delay, retryDelay, useListAddresses } = answers;
 
   const targetAddresses = useListAddresses
     ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
@@ -77,58 +71,48 @@ const main = async () => {
 
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
   console.log(`Total wallets to use: ${privateKeys.length}`);
-  console.log(`Total target addresses: ${targetAddresses.length || "Each wallet will send to itself"}`);
+  console.log(`Total recipient addresses: ${targetAddresses.length || "Each wallet will send to itself"}`);
 
   const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
 
-  for (let walletIndex = 0; walletIndex < privateKeysWithPrefix.length; walletIndex++) {
-    const privateKey = privateKeysWithPrefix[walletIndex];
-    const web3 = new Web3(rpcUrl);
-    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-    let nonce = await web3.eth.getTransactionCount(account.address, "pending");
-
-    console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
-    
-    // Looping setiap address yang ada di listaddress.txt
-    for (let i = 0; i < targetAddresses.length; i++) {
-        const toAddress = targetAddresses[i];
-        
-        for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
-            console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
-            let success = false;
-
-            while (!success) {
-                try {
-                    const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
-                    const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-                    const gasLimit = BigInt(21000);
-
-                    const tx = {
-                        to: toAddress,
-                        value: amountInWei,
-                        gas: gasLimit,
-                        gasPrice: gasPrice,
-                        nonce: nonce,
-                        chainId: chainId,
-                    };
-
-                    const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-                    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-                    console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
-                    success = true;
-                    nonce++;
-
-                    if (delay > 0) {
-                        console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
-                        await sleep(delay);
-                    }
-                } catch (error) {
-                    console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds...`, error.message);
-                    await sleep(retryDelay);
-                }
-            }
+  let currentIndex = 0;
+  while (currentIndex < targetAddresses.length) {
+    for (const privateKey of privateKeysWithPrefix) {
+      if (currentIndex >= targetAddresses.length) break;
+      const web3 = new Web3(rpcUrl);
+      const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+      let nonce = await web3.eth.getTransactionCount(account.address, "pending");
+      const toAddress = targetAddresses[currentIndex];
+      console.log(`\n🚀 Sending transaction from ${green(account.address)} to ${green(toAddress)}...`);
+      let success = false;
+      while (!success) {
+        try {
+          const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
+          const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+          const gasLimit = BigInt(21000);
+          const tx = {
+            to: toAddress,
+            value: amountInWei,
+            gas: gasLimit,
+            gasPrice: gasPrice,
+            nonce: nonce,
+            chainId: chainId,
+          };
+          const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+          const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+          console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+          success = true;
+          nonce++;
+          currentIndex++;
+          if (delay > 0) {
+            console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
+            await sleep(delay);
+          }
+        } catch (error) {
+          console.error(`❌ Transaction failed, retrying in ${retryDelay} seconds...`, error.message);
+          await sleep(retryDelay);
         }
+      }
     }
   }
   console.log(purple("🎉 === All transactions completed ==="));
