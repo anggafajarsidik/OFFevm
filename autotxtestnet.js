@@ -75,16 +75,17 @@ const main = async () => {
 
   const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
 
-  let currentIndex = 0;
-  while (currentIndex < targetAddresses.length) {
+  for (let i = 0; i < targetAddresses.length; i++) {
+    const toAddress = targetAddresses[i];
+
     for (const privateKey of privateKeysWithPrefix) {
-      if (currentIndex >= targetAddresses.length) break;
       const web3 = new Web3(rpcUrl);
       const account = web3.eth.accounts.privateKeyToAccount(privateKey);
       let nonce = await web3.eth.getTransactionCount(account.address, "pending");
-      const toAddress = targetAddresses[currentIndex];
+
       console.log(`\n🚀 Sending transaction from ${green(account.address)} to ${green(toAddress)}...`);
       let success = false;
+      
       while (!success) {
         try {
           const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
@@ -103,7 +104,6 @@ const main = async () => {
           console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
           success = true;
           nonce++;
-          currentIndex++;
           if (delay > 0) {
             console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
             await sleep(delay);
@@ -115,6 +115,7 @@ const main = async () => {
       }
     }
   }
+
   console.log(purple("🎉 === All transactions completed ==="));
 };
 
