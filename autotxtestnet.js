@@ -78,11 +78,13 @@ const main = async () => {
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
   
   const privateKeysWithPrefix = privateKeys.map(key => key.startsWith("0x") ? key : `0x${key}`);
+  console.log(`Using ${privateKeysWithPrefix.length} wallet(s) for transactions.`);
+
   for (const privateKey of privateKeysWithPrefix) {
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     let nonce = await web3.eth.getTransactionCount(account.address, "pending");
-    console.log(`Using Wallet: ${green(account.address)}`);
+    console.log(`\nStarting transactions for Wallet: ${green(account.address)}`);
     
     for (let i = 0; i < transactionsCount; i++) {
       console.log(`\nSending transaction #${i + 1} from ${green(account.address)}...`);
@@ -95,6 +97,8 @@ const main = async () => {
           const gasLimit = BigInt(21000);
           
           const toAddress = useListAddresses ? targetAddresses[i % targetAddresses.length] : account.address;
+          console.log(`Transaction target: ${green(toAddress)}`);
+
           const tx = {
             to: toAddress,
             value: amountInWei,
