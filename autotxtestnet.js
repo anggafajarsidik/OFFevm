@@ -85,11 +85,9 @@ const main = async () => {
     const privateKey = privateKeysWithPrefix[walletIndex];
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-    let nonce = await web3.eth.getTransactionCount(account.address, "pending");
 
     console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
     
-    // Looping setiap address yang ada di listaddress.txt
     for (let i = 0; i < targetAddresses.length; i++) {
         const toAddress = targetAddresses[i];
         
@@ -102,6 +100,7 @@ const main = async () => {
                     const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
                     const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
                     const gasLimit = BigInt(21000);
+                    const nonce = await web3.eth.getTransactionCount(account.address, "latest");
 
                     const tx = {
                         to: toAddress,
@@ -117,7 +116,6 @@ const main = async () => {
 
                     console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
                     success = true;
-                    nonce++;
 
                     if (delay > 0) {
                         console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
