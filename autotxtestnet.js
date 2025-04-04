@@ -58,12 +58,22 @@ const main = async () => {
       name: "retryDelay",
       message: "How much delay (in seconds) before retrying failed transactions?",
       validate: input => !isNaN(input) && input >= 0,
+    },
+    {
+      type: "confirm",
+      name: "useListAddresses",
+      message: "Do you want to use addresses from listaddress.txt?",
+      default: true,
     }
   ]);
 
   const networkChoiceIndex = parseInt(answers.networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, explorer } = networks[networkChoiceIndex];
-  const { amount, transactionsCount, delay, retryDelay } = answers;
+  const { amount, transactionsCount, delay, retryDelay, useListAddresses } = answers;
+
+  const targetAddresses = useListAddresses
+    ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
+    : [];
 
   console.log(`\nYou have selected the network: ${cyan(name)}.`);
   
@@ -72,9 +82,10 @@ const main = async () => {
     const web3 = new Web3(rpcUrl);
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     let nonce = await web3.eth.getTransactionCount(account.address, "pending");
+    console.log(`Using Wallet: ${green(account.address)}`);
     
     for (let i = 0; i < transactionsCount; i++) {
-      console.log(`\nSending transaction #${i + 1}...`);
+      console.log(`\nSending transaction #${i + 1} from ${green(account.address)}...`);
       let success = false;
       
       while (!success) {
@@ -83,7 +94,7 @@ const main = async () => {
           const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
           const gasLimit = BigInt(21000);
           
-          const toAddress = account.address; 
+          const toAddress = useListAddresses ? targetAddresses[i % targetAddresses.length] : account.address;
           const tx = {
             to: toAddress,
             value: amountInWei,
@@ -105,7 +116,7 @@ const main = async () => {
             await sleep(delay);
           }
         } catch (error) {
-          console.error(`Transaction failed, retrying in ${retryDelay} seconds...`, error.message);
+          console.error(`Transaction failed from ${green(account.address)}, retrying in ${retryDelay} seconds...`, error.message);
           await sleep(retryDelay);
         }
       }
