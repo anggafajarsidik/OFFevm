@@ -86,13 +86,12 @@ const main = async () => {
     const privateKey = privateKeysWithPrefix[walletIndex];
 
     let web3;
-    while (true) {
+    while (!web3) {
       try {
         web3 = new Web3(rpcUrl);
-        await web3.eth.getBlockNumber(); // Coba koneksi ke RPC
-        break;
+        await web3.eth.getBlockNumber();
       } catch (error) {
-        console.error(red(`❌ RPC Error! Retrying in ${retryDelay} seconds...`), error.message);
+        console.error(red(`RPC error! Retrying in ${retryDelay} seconds...`), error.message);
         await sleep(retryDelay);
       }
     }
@@ -103,18 +102,8 @@ const main = async () => {
     for (let i = 0; i < targetAddresses.length; i++) {
       const toAddress = targetAddresses[i];
 
-      let isContract;
-      while (true) {
-        try {
-          isContract = await web3.eth.getCode(toAddress);
-          break;
-        } catch (error) {
-          console.error(red(`❌ Error checking contract address! Retrying in ${retryDelay} seconds...`), error.message);
-          await sleep(retryDelay);
-        }
-      }
-
-      if (isContract !== "0x") {
+      const code = await web3.eth.getCode(toAddress);
+      if (code !== "0x") {
         console.log(`⚠️ Skipping contract address: ${toAddress}`);
         continue;
       }
@@ -150,7 +139,7 @@ const main = async () => {
               await sleep(delay);
             }
           } catch (error) {
-            console.error(red(`❌ Transaction failed! Retrying in ${retryDelay} seconds...`), error.message);
+            console.error(red(`❌ Transaction failed, retrying in ${retryDelay} seconds...`), error.message);
             await sleep(retryDelay);
           }
         }
@@ -161,5 +150,5 @@ const main = async () => {
 };
 
 main().catch(error => {
-  console.error(red("An error occurred:"), error.message);
+  console.error(red("An unexpected error occurred, but script will keep running:"), error.message);
 });
