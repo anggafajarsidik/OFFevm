@@ -18,6 +18,17 @@ ${purple(
   ' ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   \n'
 )}`;
 
+const checkRPC = async (rpcUrl) => {
+  try {
+    const response = await fetch(rpcUrl);
+    const data = await response.json();
+    return data;  // RPC is valid if we get JSON
+  } catch (error) {
+    console.error(`❌ RPC Error: ${error.message}`);
+    return null;  // RPC is invalid or unreachable
+  }
+};
+
 const main = async () => {
   console.clear();
   console.log(purple("=== Starting the process ==="));
