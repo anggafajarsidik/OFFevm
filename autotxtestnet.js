@@ -9,11 +9,6 @@ const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
 const red = (text) => `\x1b[31m${text}\x1b[0m`;
 
-const logToFile = async (message) => {
-  const timestamp = new Date().toISOString();
-  await fs.appendFile("transaction_log.txt", `[${timestamp}] ${message}\n`);
-};
-
 const createdByLogo = `
 ${purple(`
  ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
@@ -89,65 +84,82 @@ const main = async () => {
 
   for (let walletIndex = 0; walletIndex < privateKeysWithPrefix.length; walletIndex++) {
     const privateKey = privateKeysWithPrefix[walletIndex];
-    const web3 = new Web3(rpcUrl);
+
+    let web3;
+    while (true) {
+      try {
+        web3 = new Web3(rpcUrl);
+        await web3.eth.getBlockNumber(); // Coba koneksi ke RPC
+        break;
+      } catch (error) {
+        console.error(red(`❌ RPC Error! Retrying in ${retryDelay} seconds...`), error.message);
+        await sleep(retryDelay);
+      }
+    }
+
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-
     console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
-    
+
     for (let i = 0; i < targetAddresses.length; i++) {
-        const toAddress = targetAddresses[i];
+      const toAddress = targetAddresses[i];
 
-        const code = await web3.eth.getCode(toAddress);
-        if (code !== "0x") {
-            console.log(`⚠️ Skipping contract address: ${toAddress}`);
-            continue;
+      let isContract;
+      while (true) {
+        try {
+          isContract = await web3.eth.getCode(toAddress);
+          break;
+        } catch (error) {
+          console.error(red(`❌ Error checking contract address! Retrying in ${retryDelay} seconds...`), error.message);
+          await sleep(retryDelay);
         }
+      }
 
-        let currentGasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
+      if (isContract !== "0x") {
+        console.log(`⚠️ Skipping contract address: ${toAddress}`);
+        continue;
+      }
 
-        for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
-            console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
-            let success = false;
+      for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
+        console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
+        let success = false;
 
-            while (!success) {
-                try {
-                    const nonce = await web3.eth.getTransactionCount(account.address, "pending");
-                    const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-                    const gasLimit = BigInt(21000);
+        while (!success) {
+          try {
+            const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
+            const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+            const gasLimit = BigInt(21000);
+            const nonce = await web3.eth.getTransactionCount(account.address, "latest");
 
-                    const tx = {
-                        to: toAddress,
-                        value: amountInWei,
-                        gas: gasLimit,
-                        gasPrice: currentGasPrice,
-                        nonce: nonce,
-                        chainId: chainId,
-                    };
+            const tx = {
+              to: toAddress,
+              value: amountInWei,
+              gas: gasLimit,
+              gasPrice: gasPrice,
+              nonce: nonce,
+              chainId: chainId,
+            };
 
-                    const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-                    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-                    console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
-                    await logToFile(`SUCCESS: ${account.address} -> ${toAddress} | ${receipt.transactionHash}`);
+            console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+            success = true;
 
-                    success = true;
-                    if (delay > 0) {
-                        console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
-                        await sleep(delay);
-                    }
-                } catch (error) {
-                    console.error(`❌ Transaction failed: ${red(error.message)}. Retrying in ${retryDelay} seconds...`);
-                    await logToFile(`FAILED: ${account.address} -> ${toAddress} | ${error.message}`);
-                    currentGasPrice += BigInt(web3.utils.toWei("1", "gwei"));
-                    await sleep(retryDelay);
-                }
+            if (delay > 0) {
+              console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
+              await sleep(delay);
             }
+          } catch (error) {
+            console.error(red(`❌ Transaction failed! Retrying in ${retryDelay} seconds...`), error.message);
+            await sleep(retryDelay);
+          }
         }
+      }
     }
   }
   console.log(purple("🎉 === All transactions completed ==="));
 };
 
 main().catch(error => {
-  console.error("An error occurred:", error.message);
+  console.error(red("An error occurred:"), error.message);
 });
