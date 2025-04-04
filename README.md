@@ -7,7 +7,7 @@
 - Fetches gas price dynamically and ensures correct nonce.
 - Skips sending to smart contract addresses.
 - Logs transaction status and errors in real time.
--Never stops trying, always resumes from where it failed.
+- Never stops trying, always resumes from where it failed.
 ---
 
 ## **Requirements**
