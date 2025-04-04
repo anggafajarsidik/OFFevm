@@ -122,7 +122,11 @@ const main = async () => {
               await sleep(delay);
             }
           } catch (error) {
-            console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds... Error: ${error.message}`);
+            if (error.type === 'invalid-json' || error.message.includes('Unexpected token')) {
+              console.error(`❌ RPC issue (invalid JSON response), retrying in ${retryDelay} seconds...`);
+            } else {
+              console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds... Error: ${error.message}`);
+            }
             await sleep(retryDelay);
           }
         }
