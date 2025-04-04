@@ -3,31 +3,20 @@ import fs from 'fs/promises';
 import inquirer from 'inquirer';
 
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
-
 const purple = (text) => `\x1b[35m${text}\x1b[0m`;
+const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
 
 const createdByLogo = `
-${purple(
-  ' ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗\n' +
-  '██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝\n' +
-  '██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ \n' +
-  '██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  \n' +
-  '╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   \n' +
-  ' ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   \n'
-)}`;
-
-const checkRPC = async (rpcUrl) => {
-  try {
-    const response = await fetch(rpcUrl);
-    const data = await response.json();
-    return data;  // RPC is valid if we get JSON
-  } catch (error) {
-    console.error(`❌ RPC Error: ${error.message}`);
-    return null;  // RPC is invalid or unreachable
-  }
-};
+${purple(`
+ ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
+██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝
+██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ 
+██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  
+╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   
+ ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
+`)}`;
 
 const main = async () => {
   console.clear();
@@ -100,50 +89,51 @@ const main = async () => {
     console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
     
     for (let i = 0; i < targetAddresses.length; i++) {
-      const toAddress = targetAddresses[i];
-      
-      for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
-        console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
-        let success = false;
+        const toAddress = targetAddresses[i];
 
-        while (!success) {
-          try {
-            const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
-            const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-            const gasLimit = BigInt(21000);
-            const nonce = await web3.eth.getTransactionCount(account.address, "latest");
-
-            const tx = {
-              to: toAddress,
-              value: amountInWei,
-              gas: gasLimit,
-              gasPrice: gasPrice,
-              nonce: nonce,
-              chainId: chainId,
-            };
-
-            const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-
-            console.log(`✅ Transaction successful: ${cyan(`${explorer}/tx/${receipt.transactionHash}`)}`);
-            success = true;
-
-            if (delay > 0) {
-              console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
-              await sleep(delay);
-            }
-          } catch (error) {
-            if (error.type === 'invalid-json' || error.message.includes('Unexpected token')) {
-              console.error(`❌ RPC issue (invalid JSON response), retrying in ${retryDelay} seconds...`);
-            } else if (error.message.includes('ECONNREFUSED') || error.message.includes('request failed')) {
-              console.error(`❌ RPC server is unavailable, retrying in ${retryDelay} seconds...`);
-            } else {
-              console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds... Error: ${error.message}`);
-            }
-            await sleep(retryDelay);
-          }
+        // Cek apakah address ini adalah smart contract
+        const code = await web3.eth.getCode(toAddress);
+        if (code !== "0x") {
+            console.log(`⚠️ Skipping contract address: ${toAddress}`);
+            continue;
         }
-      }
+
+        for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
+            console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
+            let success = false;
+
+            while (!success) {
+                try {
+                    const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
+                    const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+                    const gasLimit = BigInt(21000);
+                    const nonce = await web3.eth.getTransactionCount(account.address, "latest");
+
+                    const tx = {
+                        to: toAddress,
+                        value: amountInWei,
+                        gas: gasLimit,
+                        gasPrice: gasPrice,
+                        nonce: nonce,
+                        chainId: chainId,
+                    };
+
+                    const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+                    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+                    console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+                    success = true;
+
+                    if (delay > 0) {
+                        console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
+                        await sleep(delay);
+                    }
+                } catch (error) {
+                    console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds...`, error.message);
+                    await sleep(retryDelay);
+                }
+            }
+        }
     }
   }
   console.log(purple("🎉 === All transactions completed ==="));
