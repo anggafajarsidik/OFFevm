@@ -10,7 +10,6 @@ This script automates the process of deploying an ERC20 token on the blockchain 
 - Automatic contract verification.
 - Send ERC20 tokens to multiple addresses from `listaddress.txt`.
 - Distribution of tokens is done randomly, ensuring no wallet is left out.
-- Stylish, emoji-enhanced output with typewriter animation.
 
 ## Prerequisites
 
@@ -47,7 +46,7 @@ This script automates the process of deploying an ERC20 token on the blockchain 
 ## Example Usage
 
 ```bash
-bash deployontea.sh
+bash bot.sh
 ```
 
 ### Token Name and Symbol
