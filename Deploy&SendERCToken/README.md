@@ -41,7 +41,6 @@ This script automates the process of deploying an ERC20 token on the blockchain 
 - `listaddress.txt`: A text file containing the addresses of recipients to receive the tokens.
 - `YourPrivateKey.txt`: A text file containing the private keys of the wallets to be used for deployment.
 - `foundry.toml`: Configuration file for Foundry RPC endpoints.
-- `.env`: Stores environment variables like token name, symbol, and RPC URL.
 
 ## Example Usage
 
@@ -63,7 +62,7 @@ bash bot.sh
 - If you choose to send tokens, the script will distribute tokens to the recipients listed in `listaddress.txt`.
 - The total token amount will be split randomly among the recipients.
 
-## License
+## **Disclaimer**
+This script is provided "as-is" for educational purposes only. The author and contributors are not responsible for any damages, losses, or legal issues arising from the use of this script. Users must ensure compliance with local laws and regulations regarding cryptocurrency transactions and blockchain technology.
 
-This script is open-source and free to use. Please give credit if using or modifying for your own purposes.
-
+Use at your own risk.
