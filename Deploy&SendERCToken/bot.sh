@@ -34,6 +34,8 @@ type_out "Launching the rocket to the blockchain..." 0.03
 sleep 1
 type_out "Script Created by :" 0.03
 
+
+
 # Stylish ASCII logo + creative message
 type_out "██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗" 0.002
 type_out "██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝" 0.002
@@ -52,6 +54,7 @@ echo -e "$INFO 🔧 Here's What This Script Can Do For You!"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy, contract verification & send ERC20 Token"
 echo -e "💸 Tokens will be distributed randomly to all listed addresses after Verifying Contract"
+       echo -e "📡 Broadcasting tokens across the chain... prepare for launch!"
 
 generate_random_name() {
     adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
