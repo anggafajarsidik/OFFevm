@@ -20,6 +20,7 @@ echo -e "----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy + contract verification"
 echo -e "💸 Transfers will begin only after all successful deploy & contract verification"
+echo -e "🔁 Transfer amount randomized between 0.5% and 5% of supply"
 echo -e "----------------------------------------------"
 
 # Random token name/symbol
@@ -211,6 +212,8 @@ EOL
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
+            DEPLOYER_ADDRESS=$(cast wallet address --private-key "$DEPLOYER_KEY" 2>/dev/null)
+            echo -e "$INFO Sending tokens from wallet: $DEPLOYER_ADDRESS"
 
             for RECIPIENT in "${RECIPIENTS[@]}"; do
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
