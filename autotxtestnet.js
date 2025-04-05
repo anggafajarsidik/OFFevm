@@ -18,15 +18,12 @@ ${purple(`
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `)}`;
 
-const creativeMessage = `
-Echoes of code ripple through the chain🌐💥.
-`;
-
 const main = async () => {
   console.clear();
   console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
   console.log(createdByLogo);
+  console.log(purple("Echoes of code ripple through the chain 🌐💥"));
 
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n").map(key => key.trim()).filter(key => key);
