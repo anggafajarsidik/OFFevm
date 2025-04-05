@@ -19,8 +19,7 @@ echo -e "\n🌐 Echoes of code ripple through the chain 💥"
 echo -e "----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy + contract verification"
-echo -e "💸 Transfers will begin only after all successful deploy & contract verification"
-echo -e "🔁 Transfer amount randomized within your chosen total allocation %"
+echo -e "💸 Tokens will be distributed randomly to all listed addresses"
 echo -e "----------------------------------------------"
 
 generate_random_name() {
@@ -65,11 +64,8 @@ input_details() {
     read -p "Do you want to send tokens to addresses in listaddress.txt? (y/n): " SEND_TOKENS
     if [[ "$SEND_TOKENS" =~ ^[Yy]$ ]]; then
         SEND_MODE=true
-        read -p "What percent of total supply should be allocated for transfers? (e.g. 20): " ALLOCATION_PERCENT
-        echo -e "$INFO Token transfers will be randomly distributed within total allocation 💸"
     else
         SEND_MODE=false
-        ALLOCATION_PERCENT=0
     fi
 
     echo -e "$INFO Reading private keys from YourPrivateKey.txt..."
@@ -99,7 +95,6 @@ EXPLORER_URL="$EXPLORER_URL"
 VERIFIER_URL="$VERIFIER_URL"
 CHAIN_ID="$CHAIN_ID"
 SEND_MODE="$SEND_MODE"
-ALLOCATION_PERCENT="$ALLOCATION_PERCENT"
 EOL
 
     cat <<EOL > "$SCRIPT_DIR/foundry.toml"
@@ -206,31 +201,29 @@ EOL
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-            TOTAL_WEI=$(cast to-wei "$TOTAL_SUPPLY" ether)
-            BUDGET_WEI=$(echo "$TOTAL_WEI * $ALLOCATION_PERCENT / 100" | bc)
 
             echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS"
-            echo -e "$INFO Allocation Budget: $ALLOCATION_PERCENT% (~$BUDGET_WEI wei)"
 
-            for RECIPIENT in "${RECIPIENTS[@]}"; do
+            TOTAL_PARTS=${#RECIPIENTS[@]}
+            REMAINING_SUPPLY=$TOTAL_SUPPLY
+
+            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+                RECIPIENT=${RECIPIENTS[$j]}
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
                 if [[ "$CODE_AT_ADDR" != "0x" ]]; then
                     echo -e "$WARN Skipping $RECIPIENT (smart contract)"
                     continue
                 fi
 
-                if (( BUDGET_WEI <= 0 )); then
-                    echo -e "$WARN Budget used up."
-                    break
+                if (( j == TOTAL_PARTS - 1 )); then
+                    AMOUNT=$REMAINING_SUPPLY
+                else
+                    MAX_PART=$(echo "$REMAINING_SUPPLY / ($TOTAL_PARTS - j) * 2" | bc)
+                    AMOUNT=$(shuf -i 1-"$MAX_PART" -n 1)
                 fi
 
-                PERCENT=$(shuf -i 5-50 -n 1)
-                AMOUNT=$(echo "$TOTAL_SUPPLY * $PERCENT / 1000" | bc)
+                REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
                 AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
-
-                if (( AMOUNT_WEI > BUDGET_WEI )); then
-                    AMOUNT_WEI=$BUDGET_WEI
-                fi
 
                 TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
                     --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
@@ -240,7 +233,6 @@ EOL
 
                 printf "💸 Sent %-12s tokens ➡️ %-42s ✅ 🔗 %s\n" \
                     "$AMOUNT" "$RECIPIENT" "$TX_LINK"
-                BUDGET_WEI=$((BUDGET_WEI - AMOUNT_WEI))
                 sleep 2
             done
         done
