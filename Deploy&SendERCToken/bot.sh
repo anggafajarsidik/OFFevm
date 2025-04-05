@@ -47,12 +47,9 @@ type_out "╚══════════════════════�
 echo ""
 
 #Additional info section
-echo -e "$INFO ----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
-echo -e "🚀 Supports multi-wallet deploy + contract verification"
-echo -e "💸 Tokens will be distributed randomly to all listed addresses"
-echo -e "$INFO ----------------------------------------------"
-echo ""
+echo -e "🚀 Supports multi-wallet deploy,contract verification & send ERC20 Token"
+echo -e "💸 Tokens will be distributed randomly to all listed addresses after Verifying Contract"
 
 generate_random_name() {
     adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
