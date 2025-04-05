@@ -48,7 +48,7 @@ type_out "╚══════════════════════�
 echo ""
 
 #Additional info section
-echo -e "$INFO What can this Script do?"
+echo -e "$INFO 🔧 Here's What This Script Can Do For You!"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy, contract verification & send ERC20 Token"
 echo -e "💸 Tokens will be distributed randomly to all listed addresses after Verifying Contract"
