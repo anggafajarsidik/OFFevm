@@ -20,10 +20,9 @@ echo -e "----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy + contract verification"
 echo -e "💸 Transfers will begin only after all successful deploy & contract verification"
-echo -e "🔁 Transfer amount randomized between 0.5% and 5% of supply"
 echo -e "----------------------------------------------"
 
-# Generate random token name/symbol
+# Random token name/symbol
 generate_random_name() {
     adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic" "Lucky" "Ultra" "Shadow" "Crimson" "Funky" "Digital" "Silver" "Golden" "Atomic" "Cyber" "Nova" "Fierce" "Zeta" "Blazing" "Pixel" "Wild" "Bright" "Royal" "Frozen" "Inferno")
     nouns=("Token" "Tea" "Drop" "Node" "Gold" "Storm" "Byte" "Spark" "Chain" "Dust" "Core" "Dash" "Flame" "Wave" "Net" "Link" "Moon" "Gem" "Flux" "Orb" "Pulse" "Beam" "Bolt" "Edge" "X")
@@ -32,25 +31,17 @@ generate_random_name() {
     echo "${adj}${noun}"
 }
 
-# Install dependencies
 install_dependencies() {
     echo -e "$INFO Checking dependencies..."
 
     if ! command -v forge &> /dev/null; then
         echo -e "$WARN Foundry not found. Installing..."
-
-        if [ ! -d ".git" ]; then
-            git init
-        fi
-
         curl -L https://foundry.paradigm.xyz | bash
         source ~/.bashrc
         export PATH="$HOME/.foundry/bin:$PATH"
         echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
         source ~/.bashrc
-
         foundryup
-        forge --version || { echo -e "$ERROR Forge install failed."; exit 1; }
     else
         echo -e "$SUCCESS Foundry is already installed."
     fi
@@ -63,7 +54,6 @@ install_dependencies() {
     fi
 }
 
-# User input
 input_details() {
     echo -e "$INFO --------------------------"
 
@@ -79,7 +69,6 @@ input_details() {
     if [[ "$SEND_TOKENS" =~ ^[Yy]$ ]]; then
         SEND_MODE=true
         echo -e "$INFO Token transfers will be random between 0.5% and 5% of total supply 💸"
-        echo -e "$INFO Transfers will begin only after all successful deploy & contract verification ✅"
     else
         SEND_MODE=false
     fi
@@ -126,14 +115,11 @@ EOL
     echo -e "$SUCCESS Configuration saved!"
 }
 
-# Deploy contracts and verify
-# (Fungsi tetap lanjut jika verifikasi gagal 5x)
-# (Smart contract address diabaikan saat kirim token)
-# (Token dikirim setelah semua kontrak diverifikasi)
-
 deploy_contracts() {
     source "$SCRIPT_DIR/token_deployment/.env"
     mkdir -p "$SCRIPT_DIR/src"
+
+    TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
     cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
 // SPDX-License-Identifier: MIT
@@ -141,7 +127,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract CustomToken is ERC20 {
     constructor() ERC20("$TOKEN_NAME", "$TOKEN_SYMBOL") {
-        _mint(msg.sender, 1000 * (10 ** decimals()));
+        _mint(msg.sender, $TOTAL_SUPPLY * (10 ** decimals()));
     }
 }
 EOL
@@ -234,12 +220,17 @@ EOL
                 fi
 
                 PERCENT=$(shuf -i 5-50 -n 1)
-                AMOUNT=$(echo "scale=4; 1000 * $PERCENT / 1000" | bc)
+                AMOUNT=$(echo "scale=4; $TOTAL_SUPPLY * $PERCENT / 1000" | bc)
                 AMOUNT_WEI=$(cast to-wei $AMOUNT ether)
 
-                echo -e "$INFO Sending $AMOUNT tokens ($((PERCENT / 10))%) to $RECIPIENT"
-                cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
-                    --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy
+                TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
+                    --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
+
+                TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
+                TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
+
+                printf "💸 Sent %-12s tokens (%2d%%) ➡️ %-42s ✅ 🔗 %s\n" \
+                    "$AMOUNT" "$((PERCENT / 10))" "$RECIPIENT" "$TX_LINK"
                 sleep 2
             done
         done
