@@ -48,7 +48,7 @@ echo ""
 
 #Additional info section
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
-echo -e "🚀 Supports multi-wallet deploy,contract verification & send ERC20 Token"
+echo -e "🚀 Supports multi-wallet deploy, contract verification & send ERC20 Token"
 echo -e "💸 Tokens will be distributed randomly to all listed addresses after Verifying Contract"
 
 generate_random_name() {
@@ -104,6 +104,10 @@ input_details() {
         SEND_MODE=false
     fi
 
+    # Add prompt for token send amount
+    read -p "📝 How many tokens would you like to send per address? (default: 100): " CUSTOM_SEND_AMOUNT
+    SEND_AMOUNT_DEFAULT=${CUSTOM_SEND_AMOUNT:-100}
+
     echo -e "$INFO Reading private keys from YourPrivateKey.txt..."
     mapfile -t PRIVATE_KEYS < "$SCRIPT_DIR/YourPrivateKey.txt"
     NUM_CONTRACTS=${#PRIVATE_KEYS[@]}
@@ -130,6 +134,7 @@ EXPLORER_URL="$EXPLORER_URL"
 VERIFIER_URL="$VERIFIER_URL"
 CHAIN_ID="$CHAIN_ID"
 SEND_MODE="$SEND_MODE"
+SEND_AMOUNT_DEFAULT="$SEND_AMOUNT_DEFAULT"
 EOL
 
     cat <<EOL > "$SCRIPT_DIR/foundry.toml"
@@ -256,7 +261,7 @@ send_tokens() {
                 AMOUNT=$REMAINING
             else
                 PERCENT=$((RANDOM % 5 + 1))
-                AMOUNT=$((TOTAL_SUPPLY * PERCENT / 100))
+                AMOUNT=$((SEND_AMOUNT_DEFAULT * PERCENT / 100))
                 [ $AMOUNT -ge $REMAINING ] && AMOUNT=$((REMAINING / 2))
             fi
             REMAINING=$((REMAINING - AMOUNT))
@@ -280,8 +285,10 @@ send_tokens() {
     done
 }
 
-# ------------- RUNNING FLOW -------------
+# Main Execution
 install_dependencies
 input_details
 deploy_contracts
 send_tokens
+
+echo -e "$SUCCESS Deployment & distribution completed! 🎉"
