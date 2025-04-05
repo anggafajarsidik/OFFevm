@@ -23,7 +23,11 @@ const main = async () => {
   console.log(purple("=== Starting the process ==="));
   console.log(purple("Script created by:"));
   console.log(createdByLogo);
-  console.log(purple("Echoes of code ripple through the chain 🌐💥"));
+
+  console.log(purple(`
+╔══════════════════════════════════════════════════════╗
+║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║
+╚══════════════════════════════════════════════════════╝\n`));
 
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n").map(key => key.trim()).filter(key => key);
