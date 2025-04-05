@@ -222,7 +222,7 @@ EOL
         done
 
         if [ "$VERIFIED" = false ]; then
-            echo -e "$ERROR Failed to verify $CONTRACT_ADDRESS after $MAX attempts."
+            echo -e "$ERROR Skippin Verification for $CONTRACT_ADDRESS after $MAX attempts."
         fi
     done
 }
