@@ -20,13 +20,12 @@ echo -e "----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy + contract verification"
 echo -e "💸 Transfers will begin only after all successful deploy & contract verification"
-echo -e "🔁 Transfer amount randomized within allocation budget per token"
+echo -e "🔁 Transfer amount randomized within your chosen total allocation %"
 echo -e "----------------------------------------------"
 
-# Random token name/symbol
 generate_random_name() {
-    adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic" "Lucky" "Ultra" "Shadow" "Crimson" "Funky" "Digital" "Silver" "Golden" "Atomic" "Cyber" "Nova" "Fierce" "Zeta" "Blazing" "Pixel" "Wild" "Bright" "Royal" "Frozen" "Inferno")
-    nouns=("Token" "Tea" "Drop" "Node" "Gold" "Storm" "Byte" "Spark" "Chain" "Dust" "Core" "Dash" "Flame" "Wave" "Net" "Link" "Moon" "Gem" "Flux" "Orb" "Pulse" "Beam" "Bolt" "Edge" "X")
+    adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
+    nouns=("Token" "Tea" "Drop" "Node" "Storm" "Byte" "Spark" "Chain" "Core" "Dash")
     adj=${adjectives[$RANDOM % ${#adjectives[@]}]}
     noun=${nouns[$RANDOM % ${#nouns[@]}]}
     echo "${adj}${noun}"
@@ -34,17 +33,15 @@ generate_random_name() {
 
 install_dependencies() {
     echo -e "$INFO Checking dependencies..."
-
     if ! command -v forge &> /dev/null; then
         echo -e "$WARN Foundry not found. Installing..."
         curl -L https://foundry.paradigm.xyz | bash
         source ~/.bashrc
         export PATH="$HOME/.foundry/bin:$PATH"
         echo 'export PATH="$HOME/.foundry/bin:$PATH"' >> ~/.bashrc
-        source ~/.bashrc
         foundryup
     else
-        echo -e "$SUCCESS Foundry is already installed."
+        echo -e "$SUCCESS Foundry already installed."
     fi
 
     if [ ! -d "$SCRIPT_DIR/lib/openzeppelin-contracts" ]; then
@@ -57,7 +54,6 @@ install_dependencies() {
 
 input_details() {
     echo -e "$INFO --------------------------"
-
     [ -f "$SCRIPT_DIR/token_deployment/.env" ] && rm "$SCRIPT_DIR/token_deployment/.env"
 
     read -p "Enter Token Name (leave blank for random): " TOKEN_NAME
@@ -69,9 +65,11 @@ input_details() {
     read -p "Do you want to send tokens to addresses in listaddress.txt? (y/n): " SEND_TOKENS
     if [[ "$SEND_TOKENS" =~ ^[Yy]$ ]]; then
         SEND_MODE=true
+        read -p "What percent of total supply should be allocated for transfers? (e.g. 20): " ALLOCATION_PERCENT
         echo -e "$INFO Token transfers will be randomly distributed within total allocation 💸"
     else
         SEND_MODE=false
+        ALLOCATION_PERCENT=0
     fi
 
     echo -e "$INFO Reading private keys from YourPrivateKey.txt..."
@@ -101,6 +99,7 @@ EXPLORER_URL="$EXPLORER_URL"
 VERIFIER_URL="$VERIFIER_URL"
 CHAIN_ID="$CHAIN_ID"
 SEND_MODE="$SEND_MODE"
+ALLOCATION_PERCENT="$ALLOCATION_PERCENT"
 EOL
 
     cat <<EOL > "$SCRIPT_DIR/foundry.toml"
@@ -161,21 +160,17 @@ EOL
 
         echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
         echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
-
-        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds before next deploy..."
+        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
         sleep "$DEPLOY_DELAY"
     done
 
     echo -e "\n$VERIFY Starting contract verification..."
-
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
         CONTRACT_ADDRESS=${DEPLOYED_ADDRESSES[$j]}
         echo -e "\n$VERIFY Verifying $CONTRACT_ADDRESS..."
-
         RETRY=0
         MAX=5
         VERIFIED=false
-
         while [ "$VERIFIED" = false ] && [ $RETRY -lt $MAX ]; do
             OUTPUT=$(forge verify-contract \
                 --rpc-url "$RPC_URL" \
@@ -196,7 +191,6 @@ EOL
                 sleep "$DEPLOY_DELAY"
             fi
         done
-
         if [ "$VERIFIED" = false ]; then
             echo -e "$ERROR Skipping verification for $CONTRACT_ADDRESS after $MAX attempts."
         fi
@@ -209,15 +203,14 @@ EOL
         fi
 
         mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
-        TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
-
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-            WALLET_ADDRESS=$(cast wallet address --private-key "$DEPLOYER_KEY" 2>/dev/null)
+            TOTAL_WEI=$(cast to-wei "$TOTAL_SUPPLY" ether)
+            BUDGET_WEI=$(echo "$TOTAL_WEI * $ALLOCATION_PERCENT / 100" | bc)
 
-            ALLOC_SUPPLY=$(echo "$TOTAL_SUPPLY * 0.3" | bc)  # 30% supply allocated for transfer
-            ALLOC_REMAINING_WEI=$(cast to-wei "$ALLOC_SUPPLY" ether)
+            echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS"
+            echo -e "$INFO Allocation Budget: $ALLOCATION_PERCENT% (~$BUDGET_WEI wei)"
 
             for RECIPIENT in "${RECIPIENTS[@]}"; do
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
@@ -226,14 +219,18 @@ EOL
                     continue
                 fi
 
-                if [ "$ALLOC_REMAINING_WEI" -le 0 ]; then
-                    echo -e "$WARN Allocation exhausted. Skipping remaining transfers."
+                if (( BUDGET_WEI <= 0 )); then
+                    echo -e "$WARN Budget used up."
                     break
                 fi
 
-                RAND_PERCENT=$(shuf -i 5-50 -n 1)
-                AMOUNT=$(echo "$ALLOC_SUPPLY * $RAND_PERCENT / 1000" | bc -l)
+                PERCENT=$(shuf -i 5-50 -n 1)
+                AMOUNT=$(echo "$TOTAL_SUPPLY * $PERCENT / 1000" | bc)
                 AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
+
+                if (( AMOUNT_WEI > BUDGET_WEI )); then
+                    AMOUNT_WEI=$BUDGET_WEI
+                fi
 
                 TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
                     --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
@@ -241,17 +238,16 @@ EOL
                 TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
                 TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
 
-                printf "💸 Wallet %-42s sent %s tokens ➡️ %-42s ✅ 🔗 %s\n" \
-                    "$WALLET_ADDRESS" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
-
-                ALLOC_REMAINING_WEI=$(echo "$ALLOC_REMAINING_WEI - $AMOUNT_WEI" | bc)
+                printf "💸 Sent %-12s tokens ➡️ %-42s ✅ 🔗 %s\n" \
+                    "$AMOUNT" "$RECIPIENT" "$TX_LINK"
+                BUDGET_WEI=$((BUDGET_WEI - AMOUNT_WEI))
                 sleep 2
             done
         done
     fi
 }
 
-# 🔄 Run All
+# Run everything
 install_dependencies
 input_details
 deploy_contracts
