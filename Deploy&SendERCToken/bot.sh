@@ -46,7 +46,13 @@ type_out "║  ✨  Echoes of code ripple through the chain 🌐💥 ✨    ║"
 type_out "╚══════════════════════════════════════════════════════╝" 0.002
 echo ""
 
-# ------------- FUNCTIONS -------------
+#Additional info section
+echo -e "$INFO ----------------------------------------------"
+echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
+echo -e "🚀 Supports multi-wallet deploy + contract verification"
+echo -e "💸 Tokens will be distributed randomly to all listed addresses"
+echo -e "$INFO ----------------------------------------------"
+echo ""
 
 generate_random_name() {
     adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
