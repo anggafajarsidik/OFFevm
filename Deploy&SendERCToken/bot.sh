@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Notification ✨
+# Aesthetic Colors & Emojis ✨
 INFO="🔹"
 WARN="⚠️"
 ERROR="❌"
@@ -20,7 +20,7 @@ echo -e "----------------------------------------------"
 echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
 echo -e "🚀 Supports multi-wallet deploy + contract verification"
 echo -e "💸 Transfers will begin only after all successful deploy & contract verification"
-echo -e "🔁 Transfer amount randomized between 0.5% and 5% of supply"
+echo -e "🔁 Transfer amount randomized within allocation budget per token"
 echo -e "----------------------------------------------"
 
 # Random token name/symbol
@@ -69,7 +69,7 @@ input_details() {
     read -p "Do you want to send tokens to addresses in listaddress.txt? (y/n): " SEND_TOKENS
     if [[ "$SEND_TOKENS" =~ ^[Yy]$ ]]; then
         SEND_MODE=true
-        echo -e "$INFO Token transfers will be random between 0.5% and 5% of total supply 💸"
+        echo -e "$INFO Token transfers will be randomly distributed within total allocation 💸"
     else
         SEND_MODE=false
     fi
@@ -209,11 +209,15 @@ EOL
         fi
 
         mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
+        TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
+
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-            DEPLOYER_ADDRESS=$(cast wallet address --private-key "$DEPLOYER_KEY" 2>/dev/null)
-            echo -e "$INFO Sending tokens from wallet: $DEPLOYER_ADDRESS"
+            WALLET_ADDRESS=$(cast wallet address --private-key "$DEPLOYER_KEY" 2>/dev/null)
+
+            ALLOC_SUPPLY=$(echo "$TOTAL_SUPPLY * 0.3" | bc)  # 30% supply allocated for transfer
+            ALLOC_REMAINING_WEI=$(cast to-wei "$ALLOC_SUPPLY" ether)
 
             for RECIPIENT in "${RECIPIENTS[@]}"; do
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
@@ -222,9 +226,14 @@ EOL
                     continue
                 fi
 
-                PERCENT=$(shuf -i 5-50 -n 1)
-                AMOUNT=$(echo "scale=4; $TOTAL_SUPPLY * $PERCENT / 1000" | bc)
-                AMOUNT_WEI=$(cast to-wei $AMOUNT ether)
+                if [ "$ALLOC_REMAINING_WEI" -le 0 ]; then
+                    echo -e "$WARN Allocation exhausted. Skipping remaining transfers."
+                    break
+                fi
+
+                RAND_PERCENT=$(shuf -i 5-50 -n 1)
+                AMOUNT=$(echo "$ALLOC_SUPPLY * $RAND_PERCENT / 1000" | bc -l)
+                AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
 
                 TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
                     --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
@@ -232,8 +241,10 @@ EOL
                 TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
                 TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
 
-                printf "💸 Sent %-12s tokens (%2d%%) ➡️ %-42s ✅ 🔗 %s\n" \
-                    "$AMOUNT" "$((PERCENT / 10))" "$RECIPIENT" "$TX_LINK"
+                printf "💸 Wallet %-42s sent %s tokens ➡️ %-42s ✅ 🔗 %s\n" \
+                    "$WALLET_ADDRESS" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
+
+                ALLOC_REMAINING_WEI=$(echo "$ALLOC_REMAINING_WEI - $AMOUNT_WEI" | bc)
                 sleep 2
             done
         done
