@@ -13,14 +13,40 @@ LINK="🔗"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR" || exit
 
-# 🌐 Opening Logo
+# Typewriter animation
+type_out() {
+  text="$1"
+  delay="${2:-0.005}"
+  for ((i=0; i<${#text}; i++)); do
+    echo -n "${text:$i:1}"
+    sleep "$delay"
+  done
+  echo ""
+}
+
+# Opening banner
 clear
-echo -e "\n🌐 Echoes of code ripple through the chain 💥"
-echo -e "----------------------------------------------"
-echo -e "📦 Deploy ERC20 token with random/custom name & symbol"
-echo -e "🚀 Supports multi-wallet deploy + contract verification"
-echo -e "💸 Tokens will be distributed randomly to all listed addresses"
-echo -e "----------------------------------------------"
+type_out "Starting deployment process..." 0.03
+sleep 0.5
+type_out "Initializing scripts and reading configs..." 0.03
+sleep 0.5
+type_out "Launching the rocket to the blockchain..." 0.03
+sleep 1
+type_out "Script Created by :" 0.03
+# Stylish ASCII logo + creative message
+type_out "██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗" 0.002
+type_out "██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝" 0.002
+type_out "██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝" 0.002
+type_out "██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝" 0.002
+type_out "╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║" 0.002
+type_out " ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝" 0.002
+echo ""
+type_out "╔══════════════════════════════════════════════════════╗" 0.002
+type_out "║  ✨  Echoes of code ripple through the chain 🌐💥 ✨    ║" 0.002
+type_out "╚══════════════════════════════════════════════════════╝" 0.002
+echo ""
+
+# ------------- FUNCTIONS -------------
 
 generate_random_name() {
     adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
@@ -64,13 +90,19 @@ input_details() {
     read -p "Do you want to send tokens to addresses in listaddress.txt? (y/n): " SEND_TOKENS
     if [[ "$SEND_TOKENS" =~ ^[Yy]$ ]]; then
         SEND_MODE=true
+        if [ -f "$SCRIPT_DIR/listaddress.txt" ]; then
+            mapfile -t CHECK_RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
+            echo -e "$INFO Total recipient addresses found: ${#CHECK_RECIPIENTS[@]}"
+        else
+            echo -e "$ERROR listaddress.txt not found!"
+            exit 1
+        fi
     else
         SEND_MODE=false
     fi
 
     echo -e "$INFO Reading private keys from YourPrivateKey.txt..."
     mapfile -t PRIVATE_KEYS < "$SCRIPT_DIR/YourPrivateKey.txt"
-
     NUM_CONTRACTS=${#PRIVATE_KEYS[@]}
     echo -e "$INFO Will deploy $NUM_CONTRACTS contracts (1 per wallet)."
 
@@ -113,7 +145,6 @@ EOL
 deploy_contracts() {
     source "$SCRIPT_DIR/token_deployment/.env"
     mkdir -p "$SCRIPT_DIR/src"
-
     TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
     cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
@@ -169,77 +200,85 @@ EOL
         while [ "$VERIFIED" = false ] && [ $RETRY -lt $MAX ]; do
             OUTPUT=$(forge verify-contract \
                 --rpc-url "$RPC_URL" \
-                --verifier blockscout \
+                --chain-id "$CHAIN_ID" \
                 --verifier-url "$VERIFIER_URL" \
+                --num-of-optimizations 200 \
+                --watch \
                 "$CONTRACT_ADDRESS" \
-                "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" 2>&1)
+                src/CustomToken.sol:CustomToken \
+                --constructor-args "" 2>&1)
 
-            if echo "$OUTPUT" | grep -qi "already verified"; then
-                echo -e "$SUCCESS Already verified!"
-                VERIFIED=true
-            elif echo "$OUTPUT" | grep -qi "Verification successful"; then
-                echo -e "$SUCCESS Verified successfully!"
+            if echo "$OUTPUT" | grep -iq "Successfully verified"; then
+                echo -e "$SUCCESS Verified: $EXPLORER_URL/address/$CONTRACT_ADDRESS"
                 VERIFIED=true
             else
-                RETRY=$((RETRY + 1))
-                echo -e "$WARN Attempt $RETRY failed. Retrying in $DEPLOY_DELAY secs..."
-                sleep "$DEPLOY_DELAY"
+                echo -e "$WARN Retry #$((RETRY + 1)): Verification pending or failed."
+                ((RETRY++))
+                sleep 15
             fi
         done
+
         if [ "$VERIFIED" = false ]; then
-            echo -e "$ERROR Skipping verification for $CONTRACT_ADDRESS after $MAX attempts."
+            echo -e "$ERROR Failed to verify $CONTRACT_ADDRESS after $MAX attempts."
         fi
     done
-
-    if [ "$SEND_MODE" = true ]; then
-        if [ ! -f "$SCRIPT_DIR/listaddress.txt" ]; then
-            echo -e "$ERROR listaddress.txt not found. Skipping transfers."
-            return
-        fi
-
-        mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
-        for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
-            TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
-            DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-
-            echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS"
-
-            TOTAL_PARTS=${#RECIPIENTS[@]}
-            REMAINING_SUPPLY=$TOTAL_SUPPLY
-
-            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
-                RECIPIENT=${RECIPIENTS[$j]}
-                CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
-                if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
-                    continue
-                fi
-
-                if (( j == TOTAL_PARTS - 1 )); then
-                    AMOUNT=$REMAINING_SUPPLY
-                else
-                    MAX_PART=$(echo "$REMAINING_SUPPLY / ($TOTAL_PARTS - j) * 2" | bc)
-                    AMOUNT=$(shuf -i 1-"$MAX_PART" -n 1)
-                fi
-
-                REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
-                AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
-
-                TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
-                    --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
-
-                TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
-                TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
-
-                printf "💸 Sent %-12s tokens ➡️ %-42s ✅ 🔗 %s\n" \
-                    "$AMOUNT" "$RECIPIENT" "$TX_LINK"
-                sleep 2
-            done
-        done
-    fi
 }
 
-# Run everything
+send_tokens() {
+    source "$SCRIPT_DIR/token_deployment/.env"
+    if [ "$SEND_MODE" != true ]; then
+        return
+    fi
+
+    echo -e "$INFO Preparing to send tokens..."
+
+    for ((k = 0; k < ${#DEPLOYED_ADDRESSES[@]}; k++)); do
+        TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$k]}
+        PRIVATE_KEY=${DEPLOYER_WALLETS[$k]}
+        WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
+
+        echo -e "$DEPLOY Sending tokens from $WALLET_ADDRESS ($TOKEN_ADDRESS)"
+
+        TOTAL_SUPPLY_HEX=$(cast call "$TOKEN_ADDRESS" "totalSupply()(uint256)")
+        TOTAL_SUPPLY=$(cast --to-dec "$TOTAL_SUPPLY_HEX")
+        DECIMALS_HEX=$(cast call "$TOKEN_ADDRESS" "decimals()(uint8)")
+        DECIMALS=$(cast --to-dec "$DECIMALS_HEX")
+
+        DISTRIBUTIONS=()
+        NUM_RECIPIENTS=${#CHECK_RECIPIENTS[@]}
+        REMAINING=$TOTAL_SUPPLY
+
+        for ((i=0; i<$NUM_RECIPIENTS; i++)); do
+            if [ $i -eq $((NUM_RECIPIENTS-1)) ]; then
+                AMOUNT=$REMAINING
+            else
+                PERCENT=$((RANDOM % 5 + 1))
+                AMOUNT=$((TOTAL_SUPPLY * PERCENT / 100))
+                [ $AMOUNT -ge $REMAINING ] && AMOUNT=$((REMAINING / 2))
+            fi
+            REMAINING=$((REMAINING - AMOUNT))
+            DISTRIBUTIONS+=($AMOUNT)
+        done
+
+        for ((i=0; i<$NUM_RECIPIENTS; i++)); do
+            TO=${CHECK_RECIPIENTS[$i]}
+            VALUE=${DISTRIBUTIONS[$i]}
+            AMOUNT_WITH_DECIMALS=$(cast to-uint256 "$VALUE" | awk -v dec=$DECIMALS '{printf "%0.f", $1 * (10^dec)}')
+
+            TX_HASH=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$TO" "$AMOUNT_WITH_DECIMALS" \
+                --private-key "$PRIVATE_KEY" --rpc-url "$RPC_URL" 2>/dev/null)
+
+            if [[ $TX_HASH == 0x* ]]; then
+                echo -e "$SUCCESS Sent to $TO — $LINK $EXPLORER_URL/tx/$TX_HASH"
+            else
+                echo -e "$ERROR Failed to send to $TO"
+            fi
+        done
+    done
+}
+
+# ------------- RUNNING FLOW -------------
 install_dependencies
 input_details
 deploy_contracts
+send_tokens
