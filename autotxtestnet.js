@@ -33,7 +33,7 @@ const main = async () => {
     "║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║",
     "╚══════════════════════════════════════════════════════╝",
     ""
-  ], 100);
+  ], 200);
 
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n").map(key => key.trim()).filter(key => key);
