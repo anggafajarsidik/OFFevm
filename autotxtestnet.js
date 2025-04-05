@@ -8,17 +8,18 @@ const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
 
-const animatedLog = async (lines, delay = 100) => {
-  for (const line of lines) {
-    console.log(purple(line));
-    await sleep(delay / 1000); // delay in seconds
+const typeOut = async (text, delay = 20) => {
+  for (const char of text) {
+    process.stdout.write(purple(char));
+    await sleep(delay / 1000);
   }
+  process.stdout.write("\n");
 };
 
 const main = async () => {
   console.clear();
 
-  await animatedLog([
+  const introLines = [
     "=== Starting the process ===",
     "Script created by:",
     "",
@@ -28,12 +29,17 @@ const main = async () => {
     "██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  ",
     "╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   ",
     " ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   ",
-    "",
-    "╔══════════════════════════════════════════════════════╗",
-    "║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║",
-    "╚══════════════════════════════════════════════════════╝",
     ""
-  ], 200);
+  ];
+
+  for (const line of introLines) {
+    await typeOut(line, 5);
+  }
+
+  await typeOut("╔══════════════════════════════════════════════════════╗", 10);
+  await typeOut("║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║", 20);
+  await typeOut("╚══════════════════════════════════════════════════════╝", 10);
+  console.log();
 
   const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n").map(key => key.trim()).filter(key => key);
@@ -157,5 +163,5 @@ const main = async () => {
 main().catch(async (error) => {
   console.error("Unexpected error occurred. Retrying main loop...", error.message);
   await sleep(5);
-  main(); // Restarting main process if unexpected crash
+  main();
 });
