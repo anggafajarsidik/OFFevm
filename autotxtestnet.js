@@ -3,46 +3,41 @@ import fs from 'fs/promises';
 import inquirer from 'inquirer';
 
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const typeOut = async (text, speed = 5) => {
+  for (let char of text) {
+    process.stdout.write(char);
+    await delay(speed);
+  }
+};
+
 const purple = (text) => `\x1b[35m${text}\x1b[0m`;
 const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
 
-const typeOut = async (text, delay = 20) => {
-  for (const char of text) {
-    process.stdout.write(purple(char));
-    await sleep(delay / 1000);
-  }
-  process.stdout.write("\n");
-};
+const logoLines = [
+  " ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗",
+  "██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝",
+  "██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ ",
+  "██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  ",
+  "╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   ",
+  " ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   ",
+];
+
+const creativeMessage = `
+╔══════════════════════════════════════════════════════╗
+║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║
+╚══════════════════════════════════════════════════════╝\n`;
 
 const main = async () => {
   console.clear();
+  await typeOut(purple("=== Starting the process ===\n"), 10);
+  await typeOut(purple("Script created by:\n\n"), 10);
+  for (let line of logoLines) await typeOut(purple(line + "\n"), 1);
+  await typeOut(purple(creativeMessage), 5);
 
-  const introLines = [
-    "=== Starting the process ===",
-    "Script created by:",
-    "",
-    " ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗",
-    "██╔═══██╗██╔════╝██╔════╝    ██╔════╝██╔══██╗████╗ ████║██║██║  ╚██╗ ██╔╝",
-    "██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝ ",
-    "██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝  ",
-    "╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║   ",
-    " ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   ",
-    ""
-  ];
-
-  for (const line of introLines) {
-    await typeOut(line, 5);
-  }
-
-  await typeOut("╔══════════════════════════════════════════════════════╗", 10);
-  await typeOut("║  ✨ Echoes of code ripple through the chain 🌐💥 ✨   ║", 20);
-  await typeOut("╚══════════════════════════════════════════════════════╝", 10);
-  console.log();
-
-  const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
-    .split("\n").map(key => key.trim()).filter(key => key);
+  const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8")).split("\n").map(key => key.trim()).filter(key => key);
   const networks = JSON.parse(await fs.readFile("listchaintestnet.txt", "utf-8"));
 
   const answers = await inquirer.prompt([
@@ -86,7 +81,7 @@ const main = async () => {
 
   const networkChoiceIndex = parseInt(answers.networkChoice.split(".")[0]) - 1;
   const { name, rpcUrl, chainId, explorer } = networks[networkChoiceIndex];
-  const { amount, transactionsCount, delay, retryDelay, useListAddresses } = answers;
+  const { amount, transactionsCount, delay: txDelay, retryDelay, useListAddresses } = answers;
 
   const targetAddresses = useListAddresses
     ? (await fs.readFile("listaddress.txt", "utf-8")).split("\n").map(addr => addr.trim()).filter(addr => addr)
@@ -144,9 +139,9 @@ const main = async () => {
             console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
             success = true;
 
-            if (delay > 0) {
-              console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
-              await sleep(delay);
+            if (txDelay > 0) {
+              console.log(`⏳ Waiting for ${txDelay} seconds before next transaction...`);
+              await sleep(txDelay);
             }
           } catch (error) {
             console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds...`, error.message);
