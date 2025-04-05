@@ -18,6 +18,10 @@ ${purple(`
  ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝   
 `)}`;
 
+const creativeMessage = `
+Echoes of code ripple through the chain🌐💥.
+`;
+
 const main = async () => {
   console.clear();
   console.log(purple("=== Starting the process ==="));
@@ -87,66 +91,64 @@ const main = async () => {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
 
     console.log(`\n🔄 Switching to Wallet ${walletIndex + 1} of ${privateKeysWithPrefix.length}: ${green(account.address)}`);
-    
-    for (let i = 0; i < targetAddresses.length; i++) {
-        const toAddress = targetAddresses[i];
 
+    for (let i = 0; i < (targetAddresses.length || 1); i++) {
+      const toAddress = targetAddresses[i] || account.address;
+
+      try {
         const code = await web3.eth.getCode(toAddress);
         if (code !== "0x") {
-            console.log(`⚠️ Skipping contract address: ${toAddress}`);
-            continue;
+          console.log(`⚠️ Skipping contract address: ${toAddress}`);
+          continue;
         }
+      } catch (e) {
+        console.log(`⚠️ Couldn't verify address type, continuing anyway...`);
+      }
 
-        for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
-            console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
-            
-            let success = false;
-            while (!success) {
-                try {
-                    const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
-                    const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
-                    const gasLimit = BigInt(21000);
-                    const nonce = await web3.eth.getTransactionCount(account.address, "latest");
+      for (let txIndex = 0; txIndex < transactionsCount; txIndex++) {
+        console.log(`\n🚀 Sending transaction #${txIndex + 1} from ${green(account.address)} to ${cyan(toAddress)}...`);
+        let success = false;
 
-                    const tx = {
-                        to: toAddress,
-                        value: amountInWei,
-                        gas: gasLimit,
-                        gasPrice: gasPrice,
-                        nonce: nonce,
-                        chainId: chainId,
-                    };
+        while (!success) {
+          try {
+            const gasPrice = BigInt(await web3.eth.getGasPrice()) * 2n;
+            const amountInWei = BigInt(web3.utils.toWei(amount, "ether"));
+            const gasLimit = BigInt(21000);
+            const nonce = await web3.eth.getTransactionCount(account.address, "latest");
 
-                    const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
-                    const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+            const tx = {
+              to: toAddress,
+              value: amountInWei,
+              gas: gasLimit,
+              gasPrice: gasPrice,
+              nonce: nonce,
+              chainId: chainId,
+            };
 
-                    console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
-                    success = true;
+            const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
+            const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
 
-                    if (delay > 0) {
-                        console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
-                        await sleep(delay);
-                    }
-                } catch (error) {
-                    console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds...`, error.message);
-                    await sleep(retryDelay);
-                }
+            console.log(`✅ Transaction successful: ${blue(`${explorer}/tx/${receipt.transactionHash}`)}`);
+            success = true;
+
+            if (delay > 0) {
+              console.log(`⏳ Waiting for ${delay} seconds before next transaction...`);
+              await sleep(delay);
             }
+          } catch (error) {
+            console.error(`❌ Transaction failed from ${green(account.address)} to ${cyan(toAddress)}, retrying in ${retryDelay} seconds...`, error.message);
+            await sleep(retryDelay);
+          }
         }
+      }
     }
   }
+
   console.log(purple("🎉 === All transactions completed ==="));
 };
 
-const runBot = async () => {
-  while (true) {
-    try {
-      await main();
-    } catch (error) {
-      console.error("⚠️ Script encountered a fatal error. Restarting in 10 seconds...", error.message);
-      await sleep(10);
-    }
-  }
-};
-
-runBot();
+main().catch(async (error) => {
+  console.error("Unexpected error occurred. Retrying main loop...", error.message);
+  await sleep(5);
+  main(); // Restarting main process if unexpected crash
+});
