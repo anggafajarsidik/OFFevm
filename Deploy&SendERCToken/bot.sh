@@ -203,7 +203,7 @@ EOL
         CONTRACT_ADDRESS=${DEPLOYED_ADDRESSES[$j]}
         echo -e "\n$VERIFY Verifying $CONTRACT_ADDRESS..."
         RETRY=0
-        MAX=5
+        MAX=3
         VERIFIED=false
         while [ "$VERIFIED" = false ] && [ $RETRY -lt $MAX ]; do
             OUTPUT=$(forge verify-contract \
