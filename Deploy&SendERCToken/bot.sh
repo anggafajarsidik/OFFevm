@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Aesthetic Colors & Emojis ✨
+# Notification ✨
 INFO="🔹"
 WARN="⚠️"
 ERROR="❌"
