@@ -252,7 +252,13 @@ EOL
     if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -e "$WARN Skipping invalid address format: $RECIPIENT"
         continue
-                fi
+    fi
+
+    CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
+    if [[ "$CODE_AT_ADDR" != "0x" ]]; then
+        echo -e "$WARN Skipping $RECIPIENT (smart contract)"
+        continue
+    fi
 
                 if (( j == TOTAL_RECIPIENTS - 1 )); then
                     AMOUNT=$REMAINING_SUPPLY
