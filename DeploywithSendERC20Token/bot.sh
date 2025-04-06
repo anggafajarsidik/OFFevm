@@ -284,9 +284,9 @@ EOL
             done
         done
         echo -e ""
-echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
-echo -e "$INFO 📬 Distribution complete. You're all set!"
-echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
+    echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
+    echo -e "$INFO 📬 Distribution complete. You're all set!"
+    echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
 
