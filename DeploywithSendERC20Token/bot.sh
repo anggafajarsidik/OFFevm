@@ -272,15 +272,32 @@ EOL
                 REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
                 AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
 
-                TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
-                    --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
+                MAX_RETRIES=5
+RETRY_DELAY=3
+RETRY_COUNT=0
+SUCCESS_SEND=false
 
-                TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
-                TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
+while [ "$SUCCESS_SEND" = false ] && [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
+        --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>&1)
 
-                printf "💸 Sent %-12s tokens ➡️ %-42s ✅ 🔗 %s\n" \
-                    "$AMOUNT" "$RECIPIENT" "$TX_LINK"
-                sleep 2
+    if echo "$TX_OUTPUT" | grep -q "replacement transaction underpriced"; then
+        echo -e "$WARN Replacement transaction underpriced. Retrying with delay..."
+        sleep "$RETRY_DELAY"
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+    else
+        SUCCESS_SEND=true
+        TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
+        TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
+        printf "💸 Sent %-12s tokens ➡️ %-42s ✅ 🔗 %s\n" \
+            "$AMOUNT" "$RECIPIENT" "$TX_LINK"
+        sleep 2
+    fi
+done
+
+if [ "$SUCCESS_SEND" = false ]; then
+    echo -e "$ERROR Failed to send to $RECIPIENT , Skipping after $MAX_RETRIES retries."
+fi
             done
         done
         echo -e ""
