@@ -244,12 +244,14 @@ EOL
             REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc) # Gunakan 90% dari total supply
             TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
-                RECIPIENT=${RECIPIENTS[$j]}
-                CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
-                if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
-                    continue
+           for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+    RECIPIENT=${RECIPIENTS[$j]}
+    RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
+
+    # Cek format address valid
+    if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+        echo -e "$WARN Skipping invalid address format: $RECIPIENT"
+        continue
                 fi
 
                 if (( j == TOTAL_RECIPIENTS - 1 )); then
