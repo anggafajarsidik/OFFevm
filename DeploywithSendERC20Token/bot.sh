@@ -233,30 +233,20 @@ EOL
     done
 
     if [ "$SEND_MODE" = true ]; then
-    mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
-    for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
-        TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
-        DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-        DEPLOYER_ADDR=$(cast wallet address --private-key "$DEPLOYER_KEY")
+        mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
+        for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
+            TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
+            DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
+            DEPLOYER_ADDR=$(cast wallet address --private-key "$DEPLOYER_KEY")
 
-        echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS by wallet $DEPLOYER_ADDR"
+            echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS by wallet $DEPLOYER_ADDR"
 
-        REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
-        TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
+            REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc) # Gunakan 90% dari total supply
+            TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-        for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
-            RECIPIENT=${RECIPIENTS[$j]}
-            RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
-
-            # ... your logic to send tokens
-        done
-
-        echo -e ""
-        echo -e "$SUCCESS All tokens have been successfully distributed to every valid address! 🎉🎯"
-        echo -e "$INFO Distribution complete. Back to sipping tea ☕️🚀"
-
-    done
-fi
+           for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+    RECIPIENT=${RECIPIENTS[$j]}
+    RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
 
     # Cek format address valid
     if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
