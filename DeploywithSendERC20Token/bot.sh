@@ -248,6 +248,14 @@ EOL
     RECIPIENT=${RECIPIENTS[$j]}
     RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
 
+    # Checking and shipping as before...
+    # ...
+done
+
+echo -e ""
+echo -e "$SUCCESS All tokens have been successfully distributed to every valid address! 🎉🎯"
+echo -e "$INFO Distribution complete. Back to sipping tea ☕️🚀"
+
     # Cek format address valid
     if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -e "$WARN Skipping invalid address format: $RECIPIENT"
