@@ -247,11 +247,7 @@ EOL
            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
     RECIPIENT=${RECIPIENTS[$j]}
     RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
-echo -e ""
-echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
-echo -e "$INFO 📬 Distribution complete. You're all set!"
-echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
-
+    
     # Cek format address valid
     if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
         echo -e "$WARN Skipping invalid address format: $RECIPIENT"
@@ -287,6 +283,10 @@ echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
                 sleep 2
             done
         done
+        echo -e ""
+echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
+echo -e "$INFO 📬 Distribution complete. You're all set!"
+echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
 
