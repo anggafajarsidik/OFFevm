@@ -161,6 +161,7 @@ deploy_contracts() {
   mkdir -p "$SCRIPT_DIR/src"
   TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
+  # Create Solidity contract file
   cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
@@ -184,6 +185,7 @@ EOL
     WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
     echo -e "$DEPLOY Deploying #$((i+1)) from $WALLET_ADDRESS"
 
+    # Deploy contract and get contract address
     CONTRACT_ADDRESS=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
       --rpc-url "$RPC_URL" \
       --private-key "$PRIVATE_KEY" \
@@ -200,16 +202,40 @@ EOL
       continue
     fi
 
-    # Verify contract after deployment
+    # Verify contract after deployment with up to 3 attempts
     echo -e "$VERIFY Verifying contract..."
-    forge verify-contract "$CONTRACT_ADDRESS" "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-      --verifier blockscout \
-      --verifier-url "$VERIFIER_URL" \
-      --rpc-url "$RPC_URL"
+    TRY_COUNT=0
+    VERIFY_SUCCESS=false
+
+    while [ $TRY_COUNT -lt 3 ]; do
+      forge verify-contract "$CONTRACT_ADDRESS" "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+        --verifier blockscout \
+        --verifier-url "$VERIFIER_URL" \
+        --rpc-url "$RPC_URL"
+
+      # If verification is successful, break the loop
+      if [ $? -eq 0 ]; then
+        VERIFY_SUCCESS=true
+        break
+      fi
+
+      # Increment attempt and display failure message
+      TRY_COUNT=$((TRY_COUNT + 1))
+      echo -e "$ERROR Verification failed for contract $CONTRACT_ADDRESS. Retrying ($TRY_COUNT/3)..."
+      sleep 5  # Wait time before retrying
+    done
+
+    if [ "$VERIFY_SUCCESS" = false ]; then
+      echo -e "$ERROR Verification failed for contract $CONTRACT_ADDRESS after 3 attempts. Skipping verification."
+    else
+      echo -e "$SUCCESS Contract verified at $CONTRACT_ADDRESS"
+    fi
 
     # Delay between deployments
+    echo -e "$INFO Waiting $DEPLOY_DELAY seconds before next deploy..."
     sleep "$DEPLOY_DELAY"
   done
+}
 
   if [ "$SEND_MODE" = true ]; then
     mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
