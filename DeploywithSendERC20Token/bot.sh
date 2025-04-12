@@ -151,23 +151,35 @@ EOL
         PRIVATE_KEY=${PRIVATE_KEYS[$i]}
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
-        DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-            --rpc-url "$RPC_URL" \
-            --private-key "$PRIVATE_KEY" \
-            --broadcast 2>&1)
-        CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
-        if [ -z "$CONTRACT_ADDRESS" ]; then
-            echo -e "$ERROR Failed to extract contract address."
-            echo "$DEPLOY_OUTPUT"
+        
+        GAS_PRICE=$(cast gas-price)
+        MAX_ATTEMPTS=5
+        ATTEMPT=0
+        DEPLOY_SUCCESS=false
+        
+        while [ "$DEPLOY_SUCCESS" = false ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+                --rpc-url "$RPC_URL" \
+                --private-key "$PRIVATE_KEY" \
+                --gas-price $(cast --to-wei $(echo "$GAS_PRICE * (1 + $ATTEMPT * 0.2)" | bc -l) --gwei) \
+                --legacy \
+                --broadcast 2>&1)
+            
+            if echo "$DEPLOY_OUTPUT" | grep -q "Deployed to:"; then
+                CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
+                echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
+                echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
+                DEPLOY_SUCCESS=true
+            else
+                echo -e "$ERROR Attempt $((ATTEMPT + 1)) failed. Retrying..."
+                ATTEMPT=$((ATTEMPT + 1))
+            fi
+        done
+        
+        if [ "$DEPLOY_SUCCESS" = false ]; then
+            echo -e "$ERROR Failed to deploy contract after $MAX_ATTEMPTS attempts."
             continue
         fi
-        DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
-        DEPLOYER_WALLETS+=("$PRIVATE_KEY")
-        echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
-        echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
-        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
-        sleep "$DEPLOY_DELAY"
-    done
     echo -e "\n$VERIFY Starting contract verification..."
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
         CONTRACT_ADDRESS=${DEPLOYED_ADDRESSES[$j]}
