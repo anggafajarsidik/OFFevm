@@ -178,6 +178,7 @@ EOL
   DEPLOYED_ADDRESSES=()
   DEPLOYER_WALLETS=()
 
+  # Loop through each wallet for contract deployment
   for ((i = 0; i < NUM_CONTRACTS; i++)); do
     PRIVATE_KEY=${PRIVATE_KEYS[$i]}
     WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
@@ -188,6 +189,7 @@ EOL
       --private-key "$PRIVATE_KEY" \
       --legacy 2>/dev/null | grep -oE '0x[a-fA-F0-9]{40}')
 
+    # Check if the contract was deployed successfully
     if [ -n "$CONTRACT_ADDRESS" ]; then
       echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
       echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
@@ -198,12 +200,14 @@ EOL
       continue
     fi
 
+    # Verify contract after deployment
     echo -e "$VERIFY Verifying contract..."
     forge verify-contract "$CONTRACT_ADDRESS" "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
       --verifier blockscout \
       --verifier-url "$VERIFIER_URL" \
       --rpc-url "$RPC_URL"
 
+    # Delay between deployments
     sleep "$DEPLOY_DELAY"
   done
 }
