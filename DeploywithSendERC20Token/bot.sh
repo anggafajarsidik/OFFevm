@@ -210,7 +210,6 @@ EOL
     # Delay between deployments
     sleep "$DEPLOY_DELAY"
   done
-}
 
   if [ "$SEND_MODE" = true ]; then
     mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
@@ -245,7 +244,7 @@ EOL
           AMOUNT=$(shuf -i "$MIN"-"$MAX" -n 1)
         fi
 
-REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
+        REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
         AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
         TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
           --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
@@ -254,11 +253,11 @@ REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
         TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
         printf "💸 Sent %-12s tokens ➡️ %-42s ✅  🔗 %s\n" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
         sleep 2
-      done  # Menutup perulangan pertama
-    done  # Menutup perulangan kedua
+      done
+    done
     echo -e "$SUCCESS 🎉 Token distribution complete!"
-  fi  # Menutup blok kondisi if untuk pengecekan distribusi token
-}  # Menutup blok function utama
+  fi
+}
 
 # RUN IT ALL
 install_dependencies
