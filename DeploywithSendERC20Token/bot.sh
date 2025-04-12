@@ -47,8 +47,42 @@ echo ""
 
 # Token Name Generator
 generate_random_name() {
-  adjectives=("Best" "Cool" "Mega" "Hyper" "Mystic" "Swift" "Quantum" "Turbo" "Neo" "Epic")
-  nouns=("Token" "Tea" "Drop" "Node" "Storm" "Byte" "Spark" "Chain" "Core" "Dash")
+  adjectives=(
+    "Tea" "Teafy" "Steamy" "Hot" "Icy" "Chill" "Bold" "Mystic" "Royal" "Zen"
+    "Ancient" "Fresh" "Golden" "Green" "Black" "White" "Oolong" "Crisp" "Magic" "Turbo"
+    "Quantum" "Meta" "Cyber" "Neo" "Ultra" "Secret" "Smooth" "Creamy" "Brewed" "Smoky"
+    "Wild" "Earthy" "Flowing" "Dripped" "Infused" "Sipped" "Lush" "Dreamy" "Divine" "Elixir"
+    "Herbal" "Silky" "Cloudy" "Gentle" "Rare" "Epic" "Sweet" "Savage" "Glacial" "Power"
+    "Celestial" "Luminous" "Alpine" "Crystal" "Eternal" "Tasty" "Misty" "Velvet" "Cocoa"
+    "Brewster" "Steeper" "Swirl" "Blissful" "Serene" "Frosted" "Charmed" "Steeped" "Soothing"
+    "Soothe" "Breezy" "Mellow" "Flowery" "Vibrant" "Fire" "Vivid" "Noble" "Breezy"
+    "Ancient" "Bitter" "Refreshing" "Sublime" "Delightful" "Fragrant" "Classic" "Fluffy"
+    "Frisky" "Heavenly" "Sunny" "Wholesome" "Aromatic" "Thirsty" "Rich" "Boldly" "Charming"
+    "Zesty" "Tart" "Wildly" "Smoothly" "Bitterly" "Spicy" "Tasty" "Crisp" "Bitter"
+    "Exotic" "Zingy" "Gourmet" "Delicious" "Sippable" "Luxurious" "Plush" "Fizzy" "Freshly"
+    "Intense" "Savory" "Vibrantly" "Tingling" "Lushly" "Infused" "Herbalicious" "Fragrant"
+    "Bitter" "Lively" "Sour" "Sparkling" "Buzzy" "Flavorful" "Lively" "Wildish" "Hazy"
+    "Whispering" "Lightly" "Crisply" "Deeply" "Calming" "Pure" "Untamed"
+  )
+
+  nouns=(
+    "Tea" "Token" "Drop" "Brew" "Cup" "Pot" "Leaf" "Leaves" "Stream" "Chain"
+    "Node" "Spirit" "Storm" "Wave" "Time" "Flow" "Bliss" "Leaflet" "Dust" "Shot"
+    "Dash" "Blend" "Tonic" "Infusion" "Splash" "Sprout" "Root" "Elixir" "Brewer" "Bag"
+    "Whirl" "Aura" "Chalice" "Flame" "Spark" "Steam" "Frost" "Bloom" "Essence" "Origin"
+    "Whisp" "Whirlwind" "Burst" "Pulse" "Crush" "Crave" "Zone" "Realm" "Vortex" "Flavor"
+    "Brewmaster" "Whisk" "Sprinkle" "Eruption" "Kettle" "Frosting" "Blooming" "Rush" "Vibe"
+    "Citrus" "Essence" "Myst" "Brewer" "Potpourri" "Breeze" "Vapour" "Eclipse" "Leafage"
+    "Harvest" "Blend" "Nectar" "Journey" "Charm" "Perk" "Tide" "Brewtastic" "Gusto"
+    "Dew" "Spritz" "Sipper" "Swirl" "Fruity" "Mix" "Classic" "Mystify" "Wave" "Tearise"
+    "Chase" "Flick" "Bubbly" "Pour" "Refreshment" "Twirl" "Glam" "Whiz" "Zing" "Sage"
+    "Swarm" "Brewer" "Storm" "Spice" "Taste" "Harmonic" "Soul" "Mist" "Reef" "Chime"
+    "Echo" "Essence" "Night" "Fusion" "Fusionize" "Sip" "Kettle" "Brewtiful" "Swell"
+    "Touch" "Savory" "Teaser" "Zest" "Splash" "Snap" "Brewgen" "Chime" "Sipify" "Cupful"
+    "Infused" "Brewfinity" "Brewit" "Teacraft" "Flavorize" "Clarity" "Liquid" "Harmonic"
+    "Potion" "Vibe" "Glow" "Twist" "Chillax" "Zenith" "Vibe"
+  )
+
   echo "${adjectives[RANDOM % ${#adjectives[@]}]}${nouns[RANDOM % ${#nouns[@]}]}"
 }
 
