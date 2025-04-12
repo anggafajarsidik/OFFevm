@@ -204,6 +204,8 @@ EOL
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
             --rpc-url "$RPC_URL" \
             --private-key "$PRIVATE_KEY" \
+            --gas-limit 5000000 \  # Menambahkan batas gas
+            --gas-price 20000000000 \  # Menambahkan gas price yang lebih tinggi
             --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
@@ -266,21 +268,21 @@ EOL
             REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc) # Gunakan 90% dari total supply
             TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-           for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
-    RECIPIENT=${RECIPIENTS[$j]}
-    RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
-    
-    # Cek format address valid
-    if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
-        echo -e "$WARN Skipping invalid address format: $RECIPIENT"
-        continue
-    fi
+            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+                RECIPIENT=${RECIPIENTS[$j]}
+                RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
 
-    CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
-    if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-        echo -e "$WARN Skipping $RECIPIENT (smart contract)"
-        continue
-    fi
+                # Cek format address valid
+                if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+                    echo -e "$WARN Skipping invalid address format: $RECIPIENT"
+                    continue
+                fi
+
+                CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
+                if [[ "$CODE_AT_ADDR" != "0x" ]]; then
+                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
+                    continue
+                fi
 
                 if (( j == TOTAL_RECIPIENTS - 1 )); then
                     AMOUNT=$REMAINING_SUPPLY
@@ -306,14 +308,8 @@ EOL
             done
         done
         echo -e ""
-    echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
-    echo -e "$INFO 📬 Distribution complete. You're all set!"
-    echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
+        echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
+        echo -e "$INFO 📬 Distribution complete. You're all set!"
+        echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
-
-
-# Run everything
-install_dependencies
-input_details
-deploy_contracts
