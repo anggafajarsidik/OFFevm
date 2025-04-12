@@ -170,6 +170,8 @@ EOL
                 echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
                 echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
                 DEPLOY_SUCCESS=true
+                DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
+                DEPLOYER_WALLETS+=("$PRIVATE_KEY")
             else
                 echo -e "$ERROR Attempt $((ATTEMPT + 1)) failed. Retrying..."
                 ATTEMPT=$((ATTEMPT + 1))
