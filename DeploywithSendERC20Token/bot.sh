@@ -313,3 +313,8 @@ EOL
         echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
+
+# Run everything
+install_dependencies
+input_details
+deploy_contracts
