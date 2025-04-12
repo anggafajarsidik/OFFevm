@@ -207,7 +207,6 @@ EOL
                 echo -e "$WARN Attempt $RETRY failed. Retrying in $DEPLOY_DELAY
 secs..."
                 sleep "$DEPLOY_DELAY"
-            fi
         done
         if [ "$VERIFIED" = false ]; then
             echo -e "$ERROR Skipping verification for $CONTRACT_ADDRESS after $MAX attempts."
