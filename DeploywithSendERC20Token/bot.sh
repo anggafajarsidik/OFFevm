@@ -279,10 +279,10 @@ EOL
         TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
         printf "💸 Sent %-12s tokens ➡️ %-42s ✅  🔗 %s\n" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
         sleep 2
-      done
-    done
+      done  # Closing inner loop (j)
+    done  # Closing outer loop (i)
     echo -e "$SUCCESS 🎉 Token distribution complete!"
-  fi
+  fi  # Closing the if block for SEND_MODE check
 }
 
 # RUN IT ALL
