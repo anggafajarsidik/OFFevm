@@ -237,53 +237,53 @@ EOL
   done
 }
 
-  if [ "$SEND_MODE" = true ]; then
-    mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
-    for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
-      TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
-      DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
-      DEPLOYER_ADDR=$(cast wallet address --private-key "$DEPLOYER_KEY")
-      echo -e "$INFO Sending tokens from $DEPLOYER_ADDR"
-      REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
-      TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
+# Send tokens if SEND_MODE is enabled
+if [ "$SEND_MODE" = true ]; then
+  mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
+  for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
+    TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
+    DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
+    DEPLOYER_ADDR=$(cast wallet address --private-key "$DEPLOYER_KEY")
+    echo -e "$INFO Sending tokens from $DEPLOYER_ADDR"
+    REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
+    TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-      for ((j = 0; j < TOTAL_RECIPIENTS; j++)); do
-        RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
+    for ((j = 0; j < TOTAL_RECIPIENTS; j++)); do
+      RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
 
-        if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
-          echo -e "$WARN Invalid address: $RECIPIENT"
-          continue
-        fi
+      if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+        echo -e "$WARN Invalid address: $RECIPIENT"
+        continue
+      fi
 
-        CODE_AT=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
-        if [[ "$CODE_AT" != "0x" ]]; then
-          echo -e "$WARN Skipping contract address: $RECIPIENT"
-          continue
-        fi
+      CODE_AT=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
+      if [[ "$CODE_AT" != "0x" ]]; then
+        echo -e "$WARN Skipping contract address: $RECIPIENT"
+        continue
+      fi
 
-        if (( j == TOTAL_RECIPIENTS - 1 )); then
-          AMOUNT=$REMAINING_SUPPLY
-        else
-          AVG=$(echo "$REMAINING_SUPPLY / ($TOTAL_RECIPIENTS - j)" | bc)
-          MIN=$(echo "$AVG / 2" | bc)
-          MAX=$(echo "$AVG * 2" | bc)
-          AMOUNT=$(shuf -i "$MIN"-"$MAX" -n 1)
-        fi
+      if (( j == TOTAL_RECIPIENTS - 1 )); then
+        AMOUNT=$REMAINING_SUPPLY
+      else
+        AVG=$(echo "$REMAINING_SUPPLY / ($TOTAL_RECIPIENTS - j)" | bc)
+        MIN=$(echo "$AVG / 2" | bc)
+        MAX=$(echo "$AVG * 2" | bc)
+        AMOUNT=$(shuf -i "$MIN"-"$MAX" -n 1)
+      fi
 
-        REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
-        AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
-        TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
-          --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
+      REMAINING_SUPPLY=$((REMAINING_SUPPLY - AMOUNT))
+      AMOUNT_WEI=$(cast to-wei "$AMOUNT" ether)
+      TX_OUTPUT=$(cast send "$TOKEN_ADDRESS" "transfer(address,uint256)" "$RECIPIENT" "$AMOUNT_WEI" \
+        --private-key "$DEPLOYER_KEY" --rpc-url "$RPC_URL" --legacy 2>/dev/null)
 
-        TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
-        TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
-        printf "💸 Sent %-12s tokens ➡️ %-42s ✅  🔗 %s\n" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
-        sleep 2
-      done  # Closing inner loop (j)
-    done  # Closing outer loop (i)
-    echo -e "$SUCCESS 🎉 Token distribution complete!"
-  fi  # Closing the if block for SEND_MODE check
-}
+      TX_HASH=$(echo "$TX_OUTPUT" | grep -oP 'Transaction hash: \K(0x[a-fA-F0-9]+)')
+      TX_LINK="$EXPLORER_URL/tx/$TX_HASH"
+      printf "💸 Sent %-12s tokens ➡️ %-42s ✅  🔗 %s\n" "$AMOUNT" "$RECIPIENT" "$TX_LINK"
+      sleep 2
+    done  # Closing inner loop (j)
+  done  # Closing outer loop (i)
+  echo -e "$SUCCESS 🎉 Token distribution complete!"
+fi  # Closing the if block for SEND_MODE check
 
 # RUN IT ALL
 install_dependencies
