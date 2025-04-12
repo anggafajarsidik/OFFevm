@@ -161,7 +161,7 @@ deploy_contracts() {
   mkdir -p "$SCRIPT_DIR/src"
   TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
-cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
+  cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -206,6 +206,7 @@ EOL
 
     sleep "$DEPLOY_DELAY"
   done
+}
 
   if [ "$SEND_MODE" = true ]; then
     mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
