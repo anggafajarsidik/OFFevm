@@ -202,32 +202,44 @@ EOL
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
-        # Get the latest nonce for the wallet
-        NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
+        # Retry logic for handling "replacement transaction underpriced"
+        RETRY=0
+        MAX_RETRIES=5
+        while [ $RETRY -lt $MAX_RETRIES ]; do
+            DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+                --rpc-url "$RPC_URL" \
+                --private-key "$PRIVATE_KEY" \
+                --gas-price 100gwei \
+                --priority-gas-price 50gwei \
+                --gas-limit 3000000 \
+                --nonce $NONCE \
+                --broadcast 2>&1)
+            
+            # Check if the error is related to underpriced transaction
+            if echo "$DEPLOY_OUTPUT" | grep -qi "replacement transaction underpriced"; then
+                echo "⚠️ Gas price too low. Retrying with higher gas price..."
+                RETRY=$((RETRY + 1))
+                sleep 5  # Wait before retrying
+                continue
+            fi
 
-        DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-            --rpc-url "$RPC_URL" \
-            --private-key "$PRIVATE_KEY" \
-            --gas-price 50gwei \
-            --priority-gas-price 25gwei \
-            --gas-limit 3000000 \
-            --nonce $NONCE \
-            --broadcast 2>&1)
+            # Extract contract address if successful
+            CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
+            if [ -z "$CONTRACT_ADDRESS" ]; then
+                echo -e "$ERROR Failed to extract contract address."
+                echo "$DEPLOY_OUTPUT"
+                break
+            fi
 
-        CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
-        if [ -z "$CONTRACT_ADDRESS" ]; then
-            echo -e "$ERROR Failed to extract contract address."
-            echo "$DEPLOY_OUTPUT"
-            continue
-        fi
+            DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
+            DEPLOYER_WALLETS+=("$PRIVATE_KEY")
 
-        DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
-        DEPLOYER_WALLETS+=("$PRIVATE_KEY")
-
-        echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
-        echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
-        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
-        sleep "$DEPLOY_DELAY"
+            echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
+            echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
+            echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
+            sleep "$DEPLOY_DELAY"
+            break  # Exit loop once successfully deployed
+        done
     done
 
     echo -e "\n$VERIFY Starting contract verification..."
@@ -318,7 +330,6 @@ EOL
         echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
-
 # ========== Execution ==========
 
 install_dependencies
