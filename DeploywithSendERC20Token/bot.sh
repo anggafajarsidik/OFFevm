@@ -202,11 +202,11 @@ EOL
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-            --rpc-url "$RPC_URL" \
-            --private-key "$PRIVATE_KEY" \
-            --gas-limit 5000000 \
-            --gas-price 20000000000 2>&1)
-            --broadcast 2>&1)
+  --rpc-url "$RPC_URL" \
+  --private-key "$PRIVATE_KEY" \
+  --gas-limit 5000000 \
+  --gas-price 20000000000 \
+  --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
         if [ -z "$CONTRACT_ADDRESS" ]; then
