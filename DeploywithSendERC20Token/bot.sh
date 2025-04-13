@@ -206,6 +206,7 @@ EOL
             --private-key "$PRIVATE_KEY" \
             --gas-limit 5000000 \
             --gas-price 20000000000 2>&1)
+            --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
         if [ -z "$CONTRACT_ADDRESS" ]; then
