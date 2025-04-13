@@ -201,36 +201,7 @@ EOL
         PRIVATE_KEY=${PRIVATE_KEYS[$i]}
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
-deploy_contracts() {
-    source "$SCRIPT_DIR/token_deployment/.env"
-    mkdir -p "$SCRIPT_DIR/src"
 
-    TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
-
-    cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract CustomToken is ERC20 {
-    constructor() ERC20(unicode"$TOKEN_NAME", unicode"$TOKEN_SYMBOL") {
-        _mint(msg.sender, $TOTAL_SUPPLY * (10 ** decimals()));
-    }
-}
-EOL
-
-    echo -e "$INFO Compiling contract..."
-    forge build || { echo -e "$ERROR Build failed."; exit 1; }
-
-    DEPLOYED_ADDRESSES=()
-    DEPLOYER_WALLETS=()
-
-    for ((i = 0; i < NUM_CONTRACTS; i++)); do
-        PRIVATE_KEY=${PRIVATE_KEYS[$i]}
-        WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
-        echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
-
-        # Menambahkan batas gas dan gas price yang lebih tinggi
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
             --rpc-url "$RPC_URL" \
             --private-key "$PRIVATE_KEY" \
@@ -260,6 +231,7 @@ EOL
         RETRY=0
         MAX=5
         VERIFIED=false
+
         while [ "$VERIFIED" = false ] && [ $RETRY -lt $MAX ]; do
             OUTPUT=$(forge verify-contract \
                 --rpc-url "$RPC_URL" \
@@ -280,6 +252,7 @@ EOL
                 sleep "$DEPLOY_DELAY"
             fi
         done
+
         if [ "$VERIFIED" = false ]; then
             echo -e "$ERROR Skipping verification for $CONTRACT_ADDRESS after $MAX attempts."
         fi
@@ -287,6 +260,7 @@ EOL
 
     if [ "$SEND_MODE" = true ]; then
         mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
+
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
@@ -294,22 +268,20 @@ EOL
 
             echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS by wallet $DEPLOYER_ADDR"
 
-            REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc) # Gunakan 90% dari total supply
+            REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
             TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
             for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
-                RECIPIENT=${RECIPIENTS[$j]}
-                RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
+                RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
 
-                # Cek format address valid
                 if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
-                    echo -e "$WARN Skipping invalid address format: $RECIPIENT"
+                    echo -e "$WARN Skipping invalid address: $RECIPIENT"
                     continue
                 fi
 
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
                 if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
+                    echo -e "$WARN Skipping smart contract: $RECIPIENT"
                     continue
                 fi
 
@@ -336,14 +308,14 @@ EOL
                 sleep 2
             done
         done
+
         echo -e ""
         echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
         echo -e "$INFO 📬 Distribution complete. You're all set!"
         echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
-
-# Run everything
+#RunEverything
 install_dependencies
 input_details
 deploy_contracts
