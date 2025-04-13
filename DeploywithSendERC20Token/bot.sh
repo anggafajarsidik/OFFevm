@@ -201,6 +201,34 @@ EOL
         PRIVATE_KEY=${PRIVATE_KEYS[$i]}
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
+deploy_contracts() {
+    source "$SCRIPT_DIR/token_deployment/.env"
+    mkdir -p "$SCRIPT_DIR/src"
+
+    TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
+
+    cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract CustomToken is ERC20 {
+    constructor() ERC20(unicode"$TOKEN_NAME", unicode"$TOKEN_SYMBOL") {
+        _mint(msg.sender, $TOTAL_SUPPLY * (10 ** decimals()));
+    }
+}
+EOL
+
+    echo -e "$INFO Compiling contract..."
+    forge build || { echo -e "$ERROR Build failed."; exit 1; }
+
+    DEPLOYED_ADDRESSES=()
+    DEPLOYER_WALLETS=()
+
+    for ((i = 0; i < NUM_CONTRACTS; i++)); do
+        PRIVATE_KEY=${PRIVATE_KEYS[$i]}
+        WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
+        echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
         # Menambahkan batas gas dan gas price yang lebih tinggi
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
@@ -224,7 +252,7 @@ EOL
         echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
         sleep "$DEPLOY_DELAY"
     done
-}
+
     echo -e "\n$VERIFY Starting contract verification..."
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
         CONTRACT_ADDRESS=${DEPLOYED_ADDRESSES[$j]}
