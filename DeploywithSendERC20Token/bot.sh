@@ -183,8 +183,9 @@ deploy_contracts() {
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 contract CustomToken is ERC20 {
-    constructor() ERC20("$TOKEN_NAME", "$TOKEN_SYMBOL") {
+    constructor() ERC20(unicode"$TOKEN_NAME", unicode"$TOKEN_SYMBOL") {
         _mint(msg.sender, $TOTAL_SUPPLY * (10 ** decimals()));
     }
 }
