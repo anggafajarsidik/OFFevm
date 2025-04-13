@@ -183,9 +183,8 @@ deploy_contracts() {
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 contract CustomToken is ERC20 {
-    constructor() ERC20(unicode"$TOKEN_NAME", unicode"$TOKEN_SYMBOL") {
+    constructor() ERC20("$TOKEN_NAME", "$TOKEN_SYMBOL") {
         _mint(msg.sender, $TOTAL_SUPPLY * (10 ** decimals()));
     }
 }
@@ -198,96 +197,30 @@ EOL
     DEPLOYER_WALLETS=()
 
     for ((i = 0; i < NUM_CONTRACTS; i++)); do
-    PRIVATE_KEY=${PRIVATE_KEYS[$i]}
-    WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
-    echo -e "$DEPLOY 🚀 Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
+        PRIVATE_KEY=${PRIVATE_KEYS[$i]}
+        WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
+        echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
-    RETRY=0
-    MAX_RETRY=5
-    DEPLOYED=false
-
-    while [ "$DEPLOYED" = false ] && [ $RETRY -lt $MAX_RETRY ]; do
-        NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
-        GAS_PRICE=$((RANDOM % 30 + 70))gwei
-        PRIORITY_PRICE=$((RANDOM % 15 + 30))gwei
-
-        echo -e "$INFO Nonce: $NONCE | Gas: $GAS_PRICE | Priority: $PRIORITY_PRICE"
-
-        GAS_PRICE=$((RANDOM % 20 + 100))gwei
-PRIORITY_PRICE=$((RANDOM % 10 + 50))gwei
-GAS_LIMIT=7000000
-NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
-
-echo -e "🔹 Nonce: $NONCE | Gas: $GAS_PRICE | Priority: $PRIORITY_PRICE"
-
-START_TIME=$(date +%s)
-MAX_WAIT=120  # seconds
-OUTPUT_FILE=$(mktemp)
-
-# Run deployment in background
-forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-  --rpc-url "$RPC_URL" \
-  --private-key "$PRIVATE_KEY" \
-  --gas-price "$GAS_PRICE" \
-  --priority-gas-price "$PRIORITY_PRICE" \
-  --gas-limit "$GAS_LIMIT" \
-  --nonce "$NONCE" \
-  --broadcast > "$OUTPUT_FILE" 2>&1 &
-
-DEPLOY_PID=$!
-while kill -0 $DEPLOY_PID 2>/dev/null; do
-  sleep 15
-  NOW=$(date +%s)
-  ELAPSED=$((NOW - START_TIME))
-  echo "⏳ Still waiting... $ELAPSED seconds passed."
-
-  if (( ELAPSED > MAX_WAIT )); then
-    echo -e "$WARN Timeout reached. Killing process and retrying with next nonce..."
-    kill -9 $DEPLOY_PID 2>/dev/null
-    wait $DEPLOY_PID 2>/dev/null
-    NONCE=$((NONCE + 1))
-    echo -e "🔁 Retrying with Nonce: $NONCE"
-
-    forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-      --rpc-url "$RPC_URL" \
-      --private-key "$PRIVATE_KEY" \
-      --gas-price "$GAS_PRICE" \
-      --priority-gas-price "$PRIORITY_PRICE" \
-      --gas-limit "$GAS_LIMIT" \
-      --nonce "$NONCE" \
-      --broadcast > "$OUTPUT_FILE" 2>&1
-    break
-  fi
-done
-
-DEPLOY_OUTPUT=$(cat "$OUTPUT_FILE")
-rm "$OUTPUT_FILE"
+        DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+            --rpc-url "$RPC_URL" \
+            --private-key "$PRIVATE_KEY" \
+            --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
-
-        if [ -n "$CONTRACT_ADDRESS" ]; then
-            echo -e "$SUCCESS ✅ Deployed at: $CONTRACT_ADDRESS"
-            echo -e "$LINK 🔗 $EXPLORER_URL/address/$CONTRACT_ADDRESS"
-            DEPLOYED=true
-            DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
-            DEPLOYER_WALLETS+=("$PRIVATE_KEY")
-            sleep "$DEPLOY_DELAY"
-        else
-            if echo "$DEPLOY_OUTPUT" | grep -q "replacement transaction underpriced"; then
-                echo -e "$WARN ⚠️ Underpriced transaction. Retrying with higher gas..."
-            else
-                echo -e "$ERROR ❌ Deployment failed:\n$DEPLOY_OUTPUT"
-            fi
-            ((RETRY++))
-            sleep 5
+        if [ -z "$CONTRACT_ADDRESS" ]; then
+            echo -e "$ERROR Failed to extract contract address."
+            echo "$DEPLOY_OUTPUT"
+            continue
         fi
+
+        DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
+        DEPLOYER_WALLETS+=("$PRIVATE_KEY")
+
+        echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
+        echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
+        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
+        sleep "$DEPLOY_DELAY"
     done
-
-    if [ "$DEPLOYED" = false ]; then
-        echo -e "$ERROR ❌ Failed to deploy after $MAX_RETRY attempts."
-    fi
-done
-
 
     echo -e "\n$VERIFY Starting contract verification..."
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
@@ -316,7 +249,6 @@ done
                 sleep "$DEPLOY_DELAY"
             fi
         done
-
         if [ "$VERIFIED" = false ]; then
             echo -e "$ERROR Skipping verification for $CONTRACT_ADDRESS after $MAX attempts."
         fi
@@ -331,22 +263,24 @@ done
 
             echo -e "$INFO Sending tokens from contract $TOKEN_ADDRESS by wallet $DEPLOYER_ADDR"
 
-            REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
+            REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc) # Gunakan 90% dari total supply
             TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-            for ((j = 0; j < TOTAL_RECIPIENTS; j++)); do
-                RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
+           for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+    RECIPIENT=${RECIPIENTS[$j]}
+    RECIPIENT=$(echo "$RECIPIENT" | tr -d '[:space:]')
+    
+    # Cek format address valid
+    if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
+        echo -e "$WARN Skipping invalid address format: $RECIPIENT"
+        continue
+    fi
 
-                if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
-                    echo -e "$WARN Skipping invalid address format: $RECIPIENT"
-                    continue
-                fi
-
-                CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
-                if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
-                    continue
-                fi
+    CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
+    if [[ "$CODE_AT_ADDR" != "0x" ]]; then
+        echo -e "$WARN Skipping $RECIPIENT (smart contract)"
+        continue
+    fi
 
                 if (( j == TOTAL_RECIPIENTS - 1 )); then
                     AMOUNT=$REMAINING_SUPPLY
@@ -372,13 +306,14 @@ done
             done
         done
         echo -e ""
-        echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
-        echo -e "$INFO 📬 Distribution complete. You're all set!"
-        echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
+    echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
+    echo -e "$INFO 📬 Distribution complete. You're all set!"
+    echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
-# ========== Execution ==========
 
+
+# Run everything
 install_dependencies
 input_details
 deploy_contracts
