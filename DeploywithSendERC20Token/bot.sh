@@ -198,37 +198,55 @@ EOL
     DEPLOYER_WALLETS=()
 
     for ((i = 0; i < NUM_CONTRACTS; i++)); do
-        PRIVATE_KEY=${PRIVATE_KEYS[$i]}
-        WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
-        echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
+    PRIVATE_KEY=${PRIVATE_KEYS[$i]}
+    WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
+    echo -e "$DEPLOY 🚀 Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
-        # Get the current nonce from the blockchain for this wallet
-        NONCE=$(cast nonce --rpc-url "$RPC_URL" "$WALLET_ADDRESS")
+    RETRY=0
+    MAX_RETRY=5
+    DEPLOYED=false
+
+    while [ "$DEPLOYED" = false ] && [ $RETRY -lt $MAX_RETRY ]; do
+        NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
+        GAS_PRICE=$((RANDOM % 30 + 70))gwei
+        PRIORITY_PRICE=$((RANDOM % 15 + 30))gwei
+
+        echo -e "$INFO Nonce: $NONCE | Gas: $GAS_PRICE | Priority: $PRIORITY_PRICE"
 
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
             --rpc-url "$RPC_URL" \
             --private-key "$PRIVATE_KEY" \
-            --gas-price 50gwei \
-            --priority-gas-price 25gwei \
-            --gas-limit 3000000 \
-            --nonce $NONCE \
+            --gas-price "$GAS_PRICE" \
+            --priority-gas-price "$PRIORITY_PRICE" \
+            --gas-limit 5000000 \
+            --nonce "$NONCE" \
             --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
-        if [ -z "$CONTRACT_ADDRESS" ]; then
-            echo -e "$ERROR Failed to extract contract address."
-            echo "$DEPLOY_OUTPUT"
-            continue
+
+        if [ -n "$CONTRACT_ADDRESS" ]; then
+            echo -e "$SUCCESS ✅ Deployed at: $CONTRACT_ADDRESS"
+            echo -e "$LINK 🔗 $EXPLORER_URL/address/$CONTRACT_ADDRESS"
+            DEPLOYED=true
+            DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
+            DEPLOYER_WALLETS+=("$PRIVATE_KEY")
+            sleep "$DEPLOY_DELAY"
+        else
+            if echo "$DEPLOY_OUTPUT" | grep -q "replacement transaction underpriced"; then
+                echo -e "$WARN ⚠️ Underpriced transaction. Retrying with higher gas..."
+            else
+                echo -e "$ERROR ❌ Deployment failed:\n$DEPLOY_OUTPUT"
+            fi
+            ((RETRY++))
+            sleep 5
         fi
-
-        DEPLOYED_ADDRESSES+=("$CONTRACT_ADDRESS")
-        DEPLOYER_WALLETS+=("$PRIVATE_KEY")
-
-        echo -e "$SUCCESS Deployed at: $CONTRACT_ADDRESS"
-        echo -e "$LINK $EXPLORER_URL/address/$CONTRACT_ADDRESS"
-        echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
-        sleep "$DEPLOY_DELAY"
     done
+
+    if [ "$DEPLOYED" = false ]; then
+        echo -e "$ERROR ❌ Failed to deploy after $MAX_RETRY attempts."
+    fi
+done
+
 
     echo -e "\n$VERIFY Starting contract verification..."
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
