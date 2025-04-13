@@ -213,14 +213,55 @@ EOL
 
         echo -e "$INFO Nonce: $NONCE | Gas: $GAS_PRICE | Priority: $PRIORITY_PRICE"
 
-        DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-            --rpc-url "$RPC_URL" \
-            --private-key "$PRIVATE_KEY" \
-            --gas-price "$GAS_PRICE" \
-            --priority-gas-price "$PRIORITY_PRICE" \
-            --gas-limit 5000000 \
-            --nonce "$NONCE" \
-            --broadcast 2>&1)
+        GAS_PRICE=$((RANDOM % 20 + 100))gwei
+PRIORITY_PRICE=$((RANDOM % 10 + 50))gwei
+GAS_LIMIT=7000000
+NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
+
+echo -e "🔹 Nonce: $NONCE | Gas: $GAS_PRICE | Priority: $PRIORITY_PRICE"
+
+START_TIME=$(date +%s)
+MAX_WAIT=120  # seconds
+OUTPUT_FILE=$(mktemp)
+
+# Run deployment in background
+forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+  --rpc-url "$RPC_URL" \
+  --private-key "$PRIVATE_KEY" \
+  --gas-price "$GAS_PRICE" \
+  --priority-gas-price "$PRIORITY_PRICE" \
+  --gas-limit "$GAS_LIMIT" \
+  --nonce "$NONCE" \
+  --broadcast > "$OUTPUT_FILE" 2>&1 &
+
+DEPLOY_PID=$!
+while kill -0 $DEPLOY_PID 2>/dev/null; do
+  sleep 15
+  NOW=$(date +%s)
+  ELAPSED=$((NOW - START_TIME))
+  echo "⏳ Still waiting... $ELAPSED seconds passed."
+
+  if (( ELAPSED > MAX_WAIT )); then
+    echo -e "$WARN Timeout reached. Killing process and retrying with next nonce..."
+    kill -9 $DEPLOY_PID 2>/dev/null
+    wait $DEPLOY_PID 2>/dev/null
+    NONCE=$((NONCE + 1))
+    echo -e "🔁 Retrying with Nonce: $NONCE"
+
+    forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
+      --rpc-url "$RPC_URL" \
+      --private-key "$PRIVATE_KEY" \
+      --gas-price "$GAS_PRICE" \
+      --priority-gas-price "$PRIORITY_PRICE" \
+      --gas-limit "$GAS_LIMIT" \
+      --nonce "$NONCE" \
+      --broadcast > "$OUTPUT_FILE" 2>&1
+    break
+  fi
+done
+
+DEPLOY_OUTPUT=$(cat "$OUTPUT_FILE")
+rm "$OUTPUT_FILE"
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
 
