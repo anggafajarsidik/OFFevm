@@ -205,8 +205,8 @@ EOL
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
             --rpc-url "$RPC_URL" \
             --private-key "$PRIVATE_KEY" \
+            --priority-gas-price \
             --gas-limit 5000000 \
-            --with-gas-price \
             --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
