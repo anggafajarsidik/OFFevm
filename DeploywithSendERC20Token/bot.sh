@@ -202,14 +202,17 @@ EOL
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
+        # Get the latest nonce for the wallet
+        NONCE=$(cast nonce "$WALLET_ADDRESS" --rpc-url "$RPC_URL")
+
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-    --rpc-url "$RPC_URL" \
-    --private-key "$PRIVATE_KEY" \
-    --gas-price 50gwei \
-    --priority-gas-price 25gwei \
-    --gas-limit 3000000 \
-    --nonce $NONCE \
-    --broadcast 2>&1)
+            --rpc-url "$RPC_URL" \
+            --private-key "$PRIVATE_KEY" \
+            --gas-price 50gwei \
+            --priority-gas-price 25gwei \
+            --gas-limit 3000000 \
+            --nonce $NONCE \
+            --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
         if [ -z "$CONTRACT_ADDRESS" ]; then
