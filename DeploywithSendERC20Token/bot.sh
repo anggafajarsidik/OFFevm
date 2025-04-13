@@ -202,11 +202,12 @@ EOL
         WALLET_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY" 2>/dev/null)
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
+        # Menambahkan batas gas dan gas price yang lebih tinggi
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
             --rpc-url "$RPC_URL" \
             --private-key "$PRIVATE_KEY" \
-            --gas-limit 5000000 \  # Menambahkan batas gas
-            --gas-price 20000000000 \  # Menambahkan gas price yang lebih tinggi
+            --gas-limit 5000000 \
+            --gas-price 20000000000 \
             --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
@@ -224,7 +225,7 @@ EOL
         echo -e "$WAIT Waiting $DEPLOY_DELAY seconds..."
         sleep "$DEPLOY_DELAY"
     done
-
+}
     echo -e "\n$VERIFY Starting contract verification..."
     for ((j = 0; j < ${#DEPLOYED_ADDRESSES[@]}; j++)); do
         CONTRACT_ADDRESS=${DEPLOYED_ADDRESSES[$j]}
