@@ -176,6 +176,7 @@ EOL
 deploy_contracts() {
     source "$SCRIPT_DIR/token_deployment/.env"
     mkdir -p "$SCRIPT_DIR/src"
+
     TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
     cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
@@ -202,11 +203,11 @@ EOL
         echo -e "$DEPLOY Deploying contract #$((i+1)) from wallet: $WALLET_ADDRESS"
 
         DEPLOY_OUTPUT=$(forge create "$SCRIPT_DIR/src/CustomToken.sol:CustomToken" \
-    --rpc-url "$RPC_URL" \
-    --private-key "$PRIVATE_KEY" \
-    --gas-limit 5000000 \
-    --gas-price 20000000000 \
-    --broadcast 2>&1)
+            --rpc-url "$RPC_URL" \
+            --private-key "$PRIVATE_KEY" \
+            --gas-limit 5000000 \
+            --gas-price 20000000000 \
+            --broadcast 2>&1)
 
         CONTRACT_ADDRESS=$(echo "$DEPLOY_OUTPUT" | grep -oP 'Deployed to: \K(0x[a-fA-F0-9]{40})')
         if [ -z "$CONTRACT_ADDRESS" ]; then
@@ -231,7 +232,6 @@ EOL
         RETRY=0
         MAX=5
         VERIFIED=false
-
         while [ "$VERIFIED" = false ] && [ $RETRY -lt $MAX ]; do
             OUTPUT=$(forge verify-contract \
                 --rpc-url "$RPC_URL" \
@@ -260,7 +260,6 @@ EOL
 
     if [ "$SEND_MODE" = true ]; then
         mapfile -t RECIPIENTS < "$SCRIPT_DIR/listaddress.txt"
-
         for ((i = 0; i < ${#DEPLOYED_ADDRESSES[@]}; i++)); do
             TOKEN_ADDRESS=${DEPLOYED_ADDRESSES[$i]}
             DEPLOYER_KEY=${DEPLOYER_WALLETS[$i]}
@@ -273,14 +272,15 @@ EOL
 
             for ((j = 0; j < TOTAL_RECIPIENTS; j++)); do
                 RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
+
                 if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
-                    echo -e "$WARN Skipping invalid address: $RECIPIENT"
+                    echo -e "$WARN Skipping invalid address format: $RECIPIENT"
                     continue
                 fi
 
                 CODE_AT_ADDR=$(cast code "$RECIPIENT" --rpc-url "$RPC_URL")
                 if [[ "$CODE_AT_ADDR" != "0x" ]]; then
-                    echo -e "$WARN Skipping smart contract: $RECIPIENT"
+                    echo -e "$WARN Skipping $RECIPIENT (smart contract)"
                     continue
                 fi
 
@@ -307,8 +307,10 @@ EOL
                 sleep 2
             done
         done
-
-        echo -e "\n$SUCCESS 🎉 Token distribution completed!"
+        echo -e ""
+        echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
+        echo -e "$INFO 📬 Distribution complete. You're all set!"
+        echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
     fi
 }
 
