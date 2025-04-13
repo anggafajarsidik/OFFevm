@@ -176,7 +176,6 @@ EOL
 deploy_contracts() {
     source "$SCRIPT_DIR/token_deployment/.env"
     mkdir -p "$SCRIPT_DIR/src"
-
     TOTAL_SUPPLY=$(shuf -i 1000000-1000000000000 -n 1)
 
     cat <<EOL > "$SCRIPT_DIR/src/CustomToken.sol"
@@ -271,9 +270,8 @@ EOL
             REMAINING_SUPPLY=$(echo "$TOTAL_SUPPLY * 90 / 100" | bc)
             TOTAL_RECIPIENTS=${#RECIPIENTS[@]}
 
-            for ((j = 0; j < ${#RECIPIENTS[@]}; j++)); do
+            for ((j = 0; j < TOTAL_RECIPIENTS; j++)); do
                 RECIPIENT=$(echo "${RECIPIENTS[$j]}" | tr -d '[:space:]')
-
                 if [[ ! "$RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]]; then
                     echo -e "$WARN Skipping invalid address: $RECIPIENT"
                     continue
@@ -309,13 +307,12 @@ EOL
             done
         done
 
-        echo -e ""
-        echo -e "$SUCCESS 🎉 All tokens have been successfully distributed to all addresses listed in listaddress.txt!"
-        echo -e "$INFO 📬 Distribution complete. You're all set!"
-        echo -e "$INFO 🔚 Exiting script. Thank you for using this tool!"
+        echo -e "\n$SUCCESS 🎉 Token distribution completed!"
     fi
 }
-#RunEverything
+
+# ========== Eksekusi ==========
+
 install_dependencies
 input_details
 deploy_contracts
