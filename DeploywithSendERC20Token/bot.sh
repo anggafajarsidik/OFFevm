@@ -311,7 +311,7 @@ EOL
     fi
 }
 
-# ========== Eksekusi ==========
+# ========== Execution ==========
 
 install_dependencies
 input_details
