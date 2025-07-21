@@ -1,18 +1,18 @@
 [
   {
-    "name": "BNB Smart Chain Mainnet",
+    "name": "BNB Smart Chain",
     "rpcUrl": "https://bsc-dataseed.binance.org/",
     "chainId": 56,
     "symbol": "BNB"
   },
   {
-    "name": "Ethereum Mainnet",
-    "rpcUrl": "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID",
+    "name": "Ethereum",
+    "rpcUrl": "https://eth.llamarpc.com",
     "chainId": 1,
     "symbol": "ETH"
   },
   {
-    "name": "Polygon Mainnet",
+    "name": "Polygon",
     "rpcUrl": "https://polygon-rpc.com/",
     "chainId": 137,
     "symbol": "MATIC"
@@ -30,7 +30,7 @@
     "symbol": "ETH"
   },
   {
-    "name": "zkSync Era Mainnet",
+    "name": "zkSync Era",
     "rpcUrl": "https://mainnet.era.zksync.io",
     "chainId": 324,
     "symbol": "ETH"
@@ -39,6 +39,18 @@
     "name": "Base",
     "rpcUrl": "https://mainnet.base.org",
     "chainId": 8453,
+    "symbol": "ETH"
+  },
+  {
+    "name": "Linea",
+    "rpcUrl": "https://linea.drpc.org",
+    "chainId": 59144,
+    "symbol": "ETH"
+  },
+  {
+    "name": "Scroll",
+    "rpcUrl": "https://rpc.scroll.io",
+    "chainId": 534352,
     "symbol": "ETH"
   }
 ]
