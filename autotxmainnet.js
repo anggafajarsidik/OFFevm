@@ -1,6 +1,7 @@
 import Web3 from 'web3';
 import fs from 'fs/promises';
 import inquirer from 'inquirer';
+import { STABLECOIN_CONTRACTS } from './StablecoinContracts.js';
 
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
 
@@ -8,16 +9,6 @@ const purple = (text) => `\x1b[35m${text}\x1b[0m`;
 const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
 const cyan = (text) => `\x1b[36m${text}\x1b[0m`;
-
-const explorerMap = {
-  1: 'https://etherscan.io/tx/',
-  56: 'https://bscscan.com/tx/',
-  137: 'https://polygonscan.io/tx/',
-  42161: 'https://arbiscan.io/tx/',
-  10: 'https://optimistic.etherscan.io/tx/',
-  324: 'https://explorer.zksync.io/tx/',
-  8453: 'https://basescan.org/tx/'
-};
 
 const createdByLogo = `
  ██████╗ ███████╗███████╗    ███████╗ █████╗ ███╗   ███╗██╗██╗  ██╗   ██╗
@@ -67,6 +58,24 @@ const ERC20_ABI = [
   }
 ];
 
+const formatTokenAmount = (amountWei, decimals) => {
+    if (!amountWei || amountWei === '0') return '0';
+    const amountBN = Web3.utils.toBN(amountWei);
+    const divisor = Web3.utils.toBN(10).pow(Web3.utils.toBN(decimals));
+    
+    const integerPart = amountBN.div(divisor).toString();
+    let decimalPart = amountBN.mod(divisor).toString();
+
+    decimalPart = '0'.repeat(Math.max(0, decimals - decimalPart.length)) + decimalPart;
+    decimalPart = decimalPart.replace(/0+$/, '');
+    
+    if (decimalPart === '') {
+        return integerPart;
+    }
+    return `${integerPart}.${decimalPart}`;
+};
+
+
 const main = async () => {
   console.clear();
   console.log(purple("=== Starting the process ==="));
@@ -97,61 +106,153 @@ const main = async () => {
       type: "list",
       name: "networkChoice",
       message: "Pick the network you want to use:",
-      choices: ["0. All Networks (Native Token Detection)", ...networks.map((net, index) => `${index + 1}. ${net.name}`)],
+      choices: ["0. All Networks (Asset Detection)", ...networks.map((net, index) => `${index + 1}. ${net.name}`)],
     },
   ]);
 
-  if (networkChoice === "0. All Networks (Native Token Detection)") {
-    console.log(purple("\n=== Detecting Native Token Balances Across All Wallets & Networks ==="));
-    const detectedBalances = []; 
+  if (networkChoice === "0. All Networks (Asset Detection)") {
+    console.log(purple("\n=== Detecting Assets Across All Wallets & Networks ==="));
+    const detectedBalancesByWallet = new Map();
 
     for (const privateKey of privateKeys) {
         const tempWeb3 = new Web3(); 
         const account = tempWeb3.eth.accounts.privateKeyToAccount(privateKey);
+        detectedBalancesByWallet.set(privateKey, {
+            address: account.address,
+            assets: [] 
+        });
+
         console.log(`\n--- Wallet Address: ${green(account.address)} ---`);
         
-        let foundBalanceOnAnyNetworkForWallet = false;
+        let foundAnyAssetForWallet = false;
 
         for (const network of networks) {
+            console.log(`  Scanning Network: ${cyan(network.name)}`);
             const web3All = new Web3(network.rpcUrl);
+            let hasAssetOnThisNetwork = false;
+
+            const usdcContract = STABLECOIN_CONTRACTS.find(s => s.chainId === network.chainId && s.symbol === "USDC");
+            if (usdcContract) {
+                try {
+                    const tokenInstance = new web3All.eth.Contract(ERC20_ABI, usdcContract.address);
+                    const tokenBalanceWei = await tokenInstance.methods.balanceOf(account.address).call();
+                    if (web3All.utils.toBN(tokenBalanceWei).gt(web3All.utils.toBN('0'))) { 
+                        const formattedBalance = formatTokenAmount(tokenBalanceWei, usdcContract.decimals);
+                        console.log(`    USDC Balance (${usdcContract.symbol}): ${blue(formattedBalance)}`);
+                        detectedBalancesByWallet.get(privateKey).assets.push({
+                            network: network,
+                            type: 'ERC20',
+                            token: usdcContract,
+                            balance: tokenBalanceWei
+                        });
+                        hasAssetOnThisNetwork = true;
+                        foundAnyAssetForWallet = true;
+                    }
+                } catch (error) {
+                }
+            }
+
+            const usdtContract = STABLECOIN_CONTRACTS.find(s => s.chainId === network.chainId && s.symbol === "USDT");
+            if (usdtContract) {
+                try {
+                    const tokenInstance = new web3All.eth.Contract(ERC20_ABI, usdtContract.address);
+                    const tokenBalanceWei = await tokenInstance.methods.balanceOf(account.address).call();
+                    if (web3All.utils.toBN(tokenBalanceWei).gt(web3All.utils.toBN('0'))) { 
+                        const formattedBalance = formatTokenAmount(tokenBalanceWei, usdtContract.decimals);
+                        console.log(`    USDT Balance (${usdtContract.symbol}): ${blue(formattedBalance)}`);
+                        detectedBalancesByWallet.get(privateKey).assets.push({
+                            network: network,
+                            type: 'ERC20',
+                            token: usdtContract,
+                            balance: tokenBalanceWei
+                        });
+                        hasAssetOnThisNetwork = true;
+                        foundAnyAssetForWallet = true;
+                    }
+                } catch (error) {
+                }
+            }
 
             try {
                 const nativeBalance = await web3All.eth.getBalance(account.address);
-                if (web3All.utils.toBN(nativeBalance).gt(web3All.utils.toBN('0'))) {
-                    console.log(`  Network: ${network.name}`);
+                if (web3All.utils.toBN(nativeBalance).gt(web3All.utils.toBN('0'))) { 
                     console.log(`    Native Balance (${network.symbol}): ${blue(web3All.utils.fromWei(nativeBalance, "ether"))}`);
-                    foundBalanceOnAnyNetworkForWallet = true;
-                    detectedBalances.push({
-                        privateKey: privateKey,
+                    detectedBalancesByWallet.get(privateKey).assets.push({
                         network: network,
+                        type: 'Native',
                         balance: nativeBalance
                     });
+                    hasAssetOnThisNetwork = true;
+                    foundAnyAssetForWallet = true;
                 }
             } catch (error) {
-                if (error.message.includes("Invalid JSON RPC response")) {
+                if (error.message.includes("Invalid JSON RPC response") || error.message.includes("timeout")) {
                     console.error(purple(`    Error connecting to ${network.name}: ${error.message}`));
                 }
             }
+            if (!hasAssetOnThisNetwork) {
+                console.log(purple(`    No assets found on ${network.name}.`));
+            }
         }
-        if (!foundBalanceOnAnyNetworkForWallet) {
-            console.log(purple("  No native token balance found on any scanned network."));
+        if (!foundAnyAssetForWallet) {
+            console.log(purple("  No assets found across all scanned networks for this wallet."));
         }
     }
-    console.log(purple("\n=== Native Token Detection Completed ==="));
+    console.log(purple("\n=== Asset Detection Completed ==="));
+
+    const detectedBalances = [];
+    for (const [privateKey, walletData] of detectedBalancesByWallet.entries()) {
+        walletData.assets.forEach(asset => {
+            detectedBalances.push({
+                privateKey: privateKey, 
+                address: walletData.address, 
+                ...asset
+            });
+        });
+    }
+
 
     if (detectedBalances.length > 0) {
         console.log(purple("\n--- Summary of Balances Found ---"));
+        const summaryByWallet = new Map();
         detectedBalances.forEach(item => {
-            const tempWeb3ForFormatting = new Web3(); 
-            // Pastikan fungsi warna digunakan dengan benar
-            console.log(`${green(tempWeb3ForFormatting.eth.accounts.privateKeyToAccount(item.privateKey).address)} on ${cyan(item.network.name)}: ${blue(tempWeb3ForFormatting.utils.fromWei(item.balance, "ether"))} ${item.network.symbol}`);
+            if (!summaryByWallet.has(item.address)) {
+                summaryByWallet.set(item.address, []);
+            }
+            summaryByWallet.get(item.address).push(item);
         });
+
+        for (const [walletAddress, assets] of summaryByWallet.entries()) {
+            console.log(`\nWallet: ${green(walletAddress)}`);
+            const assetsSortedForDisplay = assets.sort((a, b) => {
+                const order = { 'USDC': 1, 'USDT': 2, 'Native': 3 };
+                let aTypeOrder = a.type === 'Native' ? order.Native : order[a.token.symbol];
+                let bTypeOrder = b.type === 'Native' ? order.Native : order[b.token.symbol];
+                
+                if (a.network.name !== b.network.name) {
+                    return a.network.name.localeCompare(b.network.name); 
+                }
+                return aTypeOrder - bTypeOrder; 
+            });
+
+            assetsSortedForDisplay.forEach(item => {
+                const tempWeb3ForFormatting = new Web3(); 
+                let balanceString;
+                if (item.type === 'Native') {
+                    balanceString = `${blue(tempWeb3ForFormatting.utils.fromWei(item.balance, "ether"))} ${item.network.symbol}`;
+                } else { 
+                    balanceString = `${blue(formatTokenAmount(item.balance, item.token.decimals))} ${item.token.symbol}`;
+                }
+                console.log(`  on ${cyan(item.network.name)} (${item.type}): ${balanceString}`);
+            });
+        }
+
 
         const { confirmTransfer } = await inquirer.prompt([
             {
                 type: "confirm",
                 name: "confirmTransfer",
-                message: purple("\nDo you want to transfer ALL detected native assets to a single destination address? (Gas fees will apply per network)"),
+                message: purple("\nDo you want to transfer ALL detected assets (USDC, USDT, then Native) to a single destination address? (Gas fees will apply per network)"),
                 default: false,
             },
         ]);
@@ -166,79 +267,159 @@ const main = async () => {
                 },
             ]);
 
-            console.log(purple("\n=== Starting Automatic Native Asset Transfers ==="));
-            console.log(purple(`All assets will be sent to: ${green(destinationAddress)}`));
+            const { confirmAddress } = await inquirer.prompt([
+                {
+                    type: "input",
+                    name: "confirmAddress",
+                    message: purple(`\nIs this the correct destination address? ${green(destinationAddress)}\nType 'y' to confirm or anything else to cancel:`),
+                    validate: input => input.toLowerCase() === 'y' || true, 
+                },
+            ]);
+
+            if (confirmAddress.toLowerCase() !== 'y') {
+                console.log(purple("\nDestination address not confirmed. Automatic transfer cancelled. Exiting."));
+                process.exit(0);
+            }
+
+            console.log(purple("\n=== Starting Automatic Asset Transfers ==="));
+            console.log(purple(`All detected assets will be sent to: ${green(destinationAddress)}`));
             console.log(purple("IMPORTANT: Ensure your wallets have enough native token for GAS FEES on EACH network."));
             console.log(purple("--------------------------------------------------\n"));
 
-            for (const item of detectedBalances) {
-                const web3Transfer = new Web3(item.network.rpcUrl);
-                const account = web3Transfer.eth.accounts.privateKeyToAccount(item.privateKey);
-                let nonce = await web3Transfer.eth.getTransactionCount(account.address, "latest");
+            const transferOrderSymbols = ['USDC', 'USDT', 'Native']; 
+            for (const assetSymbol of transferOrderSymbols) {
+                const assetsToTransferOfType = detectedBalances.filter(item => {
+                    if (assetSymbol === 'Native') return item.type === 'Native';
+                    return item.type === 'ERC20' && item.token.symbol === assetSymbol;
+                });
 
-                console.log(cyan(`Processing wallet ${green(account.address)} on ${item.network.name}...`));
+                if (assetsToTransferOfType.length > 0) {
+                    console.log(blue(`\n--- Processing ${assetSymbol} Transfers ---`));
+                    for (const item of assetsToTransferOfType) {
+                        const web3Transfer = new Web3(item.network.rpcUrl);
+                        const account = web3Transfer.eth.accounts.privateKeyToAccount(item.privateKey);
+                        let currentNonce = await web3Transfer.eth.getTransactionCount(account.address, "latest");
 
-                try {
-                    const gasPriceResult = await web3Transfer.eth.getGasPrice();
-                    let currentBaseFeePerGas = web3Transfer.utils.toBN(gasPriceResult);
-                    
-                    const maxPriorityFeePerGas = web3Transfer.utils.toBN(web3Transfer.utils.toWei('0.01', 'gwei')); 
-                    
-                    const maxFeePerGas = currentBaseFeePerGas.add(maxPriorityFeePerGas).mul(web3Transfer.utils.toBN(120)).div(web3Transfer.utils.toBN(100));
+                        console.log(cyan(`Processing wallet ${green(account.address)} on ${item.network.name} for ${assetSymbol}...`));
 
+                        try {
+                            const gasPriceResult = await web3Transfer.eth.getGasPrice();
+                            let currentBaseFeePerGas = web3Transfer.utils.toBN(gasPriceResult);
+                            
+                            const maxPriorityFeePerGas = web3Transfer.utils.toBN(web3Transfer.utils.toWei('0.01', 'gwei')); 
+                            const maxFeePerGas = currentBaseFeePerGas.add(maxPriorityFeePerGas).mul(web3Transfer.utils.toBN(120)).div(web3Transfer.utils.toBN(100));
 
-                    let gasLimit;
-                    try {
-                        gasLimit = await web3Transfer.eth.estimateGas({
-                            from: account.address,
-                            to: destinationAddress,
-                            value: web3Transfer.utils.toWei('1', 'wei'), 
-                        });
-                        gasLimit = web3Transfer.utils.toBN(Math.floor(parseInt(gasLimit) * 1.2)); 
-                        console.log(blue(`  Estimated Gas Limit: ${gasLimit.toString()}`));
-                    } catch (estimateError) {
-                        console.warn(purple(`  Could not estimate gas. Using default 21000. Error: ${estimateError.message}`));
-                        gasLimit = web3Transfer.utils.toBN(21000); 
+                            let gasLimit;
+                            let rawAmountToSend;
+                            let tx;
+
+                            if (item.type === 'Native') {
+                                try {
+                                    gasLimit = await web3Transfer.eth.estimateGas({
+                                        from: account.address,
+                                        to: destinationAddress,
+                                        value: web3Transfer.utils.toWei('1', 'wei'), 
+                                    });
+                                    gasLimit = web3Transfer.utils.toBN(Math.floor(parseInt(gasLimit) * 1.2)); 
+                                    console.log(blue(`  Estimated Gas Limit: ${gasLimit.toString()}`));
+                                } catch (estimateError) {
+                                    console.warn(purple(`  Could not estimate gas. Using default 21000. Error: ${estimateError.message}`));
+                                    gasLimit = web3Transfer.utils.toBN(21000); 
+                                }
+
+                                const currentBalanceWei = web3Transfer.utils.toBN(item.balance);
+                                const estimatedTxCost = gasLimit.mul(maxFeePerGas);
+                                const safetyBuffer = web3Transfer.utils.toBN(web3Transfer.utils.toWei('0.000001', 'ether')); 
+
+                                rawAmountToSend = currentBalanceWei.sub(estimatedTxCost).sub(safetyBuffer);
+
+                                if (rawAmountToSend.lt(web3Transfer.utils.toBN('0'))) {
+                                    console.error(purple(`  Insufficient ${item.network.symbol} balance for gas. Have: ${web3Transfer.utils.fromWei(currentBalanceWei, 'ether')} ${item.network.symbol}, Needed for gas: ${web3Transfer.utils.fromWei(estimatedTxCost, 'ether')} ${item.network.symbol}. Skipping this transfer.`));
+                                    continue; 
+                                }
+                                if (rawAmountToSend.lt(web3Transfer.utils.toBN('10000'))) { 
+                                    rawAmountToSend = web3Transfer.utils.toBN('0');
+                                    console.warn(purple(`  Amount to send is very small after gas and buffer. Sending 0 ${item.network.symbol}.`));
+                                }
+
+                                if (rawAmountToSend.isZero()) {
+                                    console.warn(purple(`  Skipping transfer for ${account.address} on ${item.network.name} as final amount to send is 0 ${item.network.symbol}.`));
+                                    continue;
+                                }
+
+                                tx = {
+                                    to: destinationAddress,
+                                    value: rawAmountToSend.toString(),
+                                    gas: gasLimit.toString(),
+                                    maxFeePerGas: maxFeePerGas.toString(), 
+                                    maxPriorityFeePerGas: maxPriorityFeePerGas.toString(), 
+                                    nonce: currentNonce,
+                                    chainId: item.network.chainId,
+                                };
+                            } else { 
+                                const tokenInstance = new web3Transfer.eth.Contract(ERC20_ABI, item.token.address);
+                                const currentTokenBalanceWei = web3Transfer.utils.toBN(item.balance);
+                                rawAmountToSend = currentTokenBalanceWei; 
+
+                                try {
+                                    gasLimit = await web3Transfer.eth.estimateGas({
+                                        from: account.address,
+                                        to: item.token.address,
+                                        data: tokenInstance.methods.transfer(destinationAddress, rawAmountToSend.toString()).encodeABI(),
+                                    });
+                                    gasLimit = web3Transfer.utils.toBN(Math.floor(parseInt(gasLimit) * 1.2));
+                                    console.log(blue(`  Estimated Gas Limit: ${gasLimit.toString()}`));
+                                } catch (estimateError) {
+                                    console.warn(purple(`  Could not estimate gas for ERC20. Using default 100000. Error: ${estimateError.message}`));
+                                    gasLimit = web3Transfer.utils.toBN(100000); 
+                                }
+
+                                const nativeBalanceForGas = web3Transfer.utils.toBN(await web3Transfer.eth.getBalance(account.address));
+                                const estimatedGasCostForTokenTx = gasLimit.mul(maxFeePerGas);
+
+                                if (nativeBalanceForGas.lt(estimatedGasCostForTokenTx)) {
+                                    console.error(purple(`  Insufficient ${item.network.symbol} (native token) for gas to send ${item.token.symbol}. Have: ${web3Transfer.utils.fromWei(nativeBalanceForGas, 'ether')} ${item.network.symbol}, Needed for gas: ${web3Transfer.utils.fromWei(estimatedGasCostForTokenTx, 'ether')} ${item.network.symbol}. Skipping this token transfer.`));
+                                    continue; 
+                                }
+
+                                if (rawAmountToSend.isZero()) {
+                                    console.warn(purple(`  Skipping transfer for ${account.address} on ${item.network.name} (${item.token.symbol}) as final amount to send is 0.`));
+                                    continue;
+                                }
+                                
+                                tx = {
+                                    to: item.token.address, 
+                                    data: tokenInstance.methods.transfer(destinationAddress, rawAmountToSend.toString()).encodeABI(), 
+                                    gas: gasLimit.toString(),
+                                    maxFeePerGas: maxFeePerGas.toString(),
+                                    maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
+                                    nonce: currentNonce, 
+                                    chainId: item.network.chainId,
+                                    value: '0x0' 
+                                };
+                            }
+
+                            const signedTx = await web3Transfer.eth.accounts.signTransaction(tx, item.privateKey);
+                            const receipt = await web3Transfer.eth.sendSignedTransaction(signedTx.rawTransaction);
+                            
+                            const explorerLink = item.network.explorer + receipt.transactionHash;
+                            const transferredAmountDisplay = item.type === 'Native' ? 
+                                blue(web3Transfer.utils.fromWei(rawAmountToSend, 'ether')) + ` ${item.network.symbol}` :
+                                blue(formatTokenAmount(rawAmountToSend, item.token.decimals)) + ` ${item.token.symbol}`;
+
+                            console.log(`  ✅ Transfer successful: ${transferredAmountDisplay} to ${green(destinationAddress)}: ${blue(explorerLink)}`);
+                            await sleep(5); 
+                        } catch (error) {
+                            let errorMessage = `  ❌ Transfer failed for ${account.address} on ${item.network.name} (${item.type === 'Native' ? item.network.symbol : item.token.symbol}): ${error.message}`;
+                            if (error.message.includes("insufficient funds")) {
+                                console.error(purple(`${errorMessage}. Skipping this transfer due to insufficient native funds for gas.`));
+                            } else if (error.message.includes("Replacement transaction underpriced") || error.message.includes("nonce already used")) {
+                                console.error(purple(`${errorMessage}. This might indicate a nonce or gas fee issue (transaction stuck). Skipping this transfer.`));
+                            } else {
+                                console.error(purple(`${errorMessage}. Skipping this transfer.`));
+                            }
+                        }
                     }
-
-                    const currentBalanceWei = web3Transfer.utils.toBN(item.balance);
-                    const estimatedTxCost = gasLimit.mul(maxFeePerGas);
-
-                    const safetyBuffer = web3Transfer.utils.toBN(web3Transfer.utils.toWei('0.000001', 'ether')); 
-
-                    let amountToSend = currentBalanceWei.sub(estimatedTxCost).sub(safetyBuffer);
-
-                    if (amountToSend.lt(web3Transfer.utils.toBN('0'))) {
-                        console.error(purple(`  Insufficient ${item.network.symbol} balance for gas. Have: ${web3Transfer.utils.fromWei(currentBalanceWei, 'ether')} ${item.network.symbol}, Needed for gas: ${web3Transfer.utils.fromWei(estimatedTxCost, 'ether')} ${item.network.symbol}. Skipping this transfer.`));
-                        continue; 
-                    }
-                    if (amountToSend.lt(web3Transfer.utils.toBN('10000'))) { 
-                        amountToSend = web3Transfer.utils.toBN('0');
-                        console.warn(purple(`  Amount to send is very small after gas and buffer. Sending 0 ${item.network.symbol}.`));
-                    }
-
-                    if (amountToSend.isZero()) {
-                        console.warn(purple(`  Skipping transfer for ${account.address} on ${item.network.name} as final amount to send is 0 ${item.network.symbol}.`));
-                        continue;
-                    }
-
-                    const tx = {
-                        to: destinationAddress,
-                        value: amountToSend.toString(),
-                        gas: gasLimit.toString(),
-                        maxFeePerGas: maxFeePerGas.toString(), 
-                        maxPriorityFeePerGas: maxPriorityFeePerGas.toString(), 
-                        nonce: nonce,
-                        chainId: item.network.chainId,
-                    };
-
-                    const signedTx = await web3Transfer.eth.accounts.signTransaction(tx, item.privateKey);
-                    const receipt = await web3Transfer.eth.sendSignedTransaction(signedTx.rawTransaction);
-                    const explorerLink = item.network.explorer + receipt.transactionHash;
-                    console.log(`  ✅ Transfer successful: ${blue(web3Transfer.utils.fromWei(amountToSend, 'ether'))} ${item.network.symbol} to ${green(destinationAddress)}: ${blue(explorerLink)}`);
-                    await sleep(5); 
-                } catch (error) {
-                    console.error(purple(`  ❌ Transfer failed for ${account.address} on ${item.network.name}: ${error.message}`));
                 }
             }
             console.log(purple("\n=== All Automatic Transfers Completed ==="));
@@ -246,7 +427,7 @@ const main = async () => {
             console.log(purple("\nAutomatic transfer cancelled. Exiting."));
         }
     } else {
-        console.log(purple("\nNo native token balances found across all wallets and networks. Exiting."));
+        console.log(purple("\nNo assets found across all wallets and networks. Exiting."));
     }
     process.exit(0); 
   }
@@ -318,7 +499,7 @@ const main = async () => {
     },
     {
       type: "input",
-      name: "transactionsCount",
+      "name": "transactionsCount",
       message: "Enter number of transactions per address:",
       validate: input => !isNaN(parseInt(input)) && parseInt(input) > 0,
     },
@@ -360,8 +541,8 @@ const main = async () => {
     } else { 
       try {
         const tokenBalanceWei = await tokenContract.methods.balanceOf(account.address).call();
-        const tokenBalance = parseFloat(web3.utils.fromWei(tokenBalanceWei, 'ether')).toFixed(tokenDecimals > 18 ? 18 : tokenDecimals);
-        console.log(`Current balance of sender ${green(account.address)}: ${blue(tokenBalance)} ${tokenSymbol}`);
+        const formattedBalance = parseFloat(web3.utils.fromWei(tokenBalanceWei, 'ether')).toFixed(tokenDecimals > 18 ? 18 : tokenDecimals);
+        console.log(`Address ${green(account.address)}: ${blue(formattedBalance)} ${tokenSymbol}`);
       } catch (error) {
         console.error(`Error fetching token balance for ${account.address}: ${error.message}`);
         console.log(`Current balance of sender ${green(account.address)}: ${blue("N/A")} ${tokenSymbol}`);
@@ -505,10 +686,10 @@ const main = async () => {
             };
           }
 
-          const signedTx = await web3.eth.accounts.signTransaction(transaction, privateKey);
+          const signedTx = await web3.eth.accounts.signTransaction(tx, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-          const explorerLink = explorerMap[chainId] + receipt.transactionHash;
-          console.log(`Transaction to ${green(toAddress)} successful: ${blue(explorerLink)}`);
+          const explorerLink = item.network.explorer + receipt.transactionHash;
+          console.log(`✅ Transfer successful: ${blue(web3.utils.fromWei(amountToSend, 'ether'))} ${item.network.symbol} to ${green(destinationAddress)}: ${blue(explorerLink)}`);
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
@@ -534,8 +715,8 @@ const main = async () => {
         console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(balance, "ether"))} ${symbol}`);
       } else { 
         const tokenBalanceWei = await tokenContract.methods.balanceOf(account.address).call();
-        const tokenBalance = parseFloat(web3.utils.fromWei(tokenBalanceWei, 'ether')).toFixed(tokenDecimals > 18 ? 18 : tokenDecimals);
-        console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(tokenBalance)} ${tokenSymbol}`);
+        const formattedBalance = parseFloat(web3.utils.fromWei(tokenBalanceWei, 'ether')).toFixed(tokenDecimals > 18 ? 18 : tokenDecimals);
+        console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(formattedBalance)} ${tokenSymbol}`);
       }
     } catch (error) {
       console.error(`Error fetching final balance: ${error.message}`);
