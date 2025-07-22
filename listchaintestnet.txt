@@ -8,8 +8,8 @@
   },
   {
     "name": "Base Sepolia",
-    "rpcUrl": "https://base-sepolia.publicnode.com",
-    "chainId": "84531",
+    "rpcUrl": "https://base-sepolia.drpc.org",
+    "chainId": "84532",
     "symbol": "ETH",
     "explorer": "https://sepolia.basescan.org"
   },
