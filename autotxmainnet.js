@@ -2,9 +2,9 @@ import Web3 from 'web3';
 import fs from 'fs/promises';
 import inquirer from 'inquirer';
 import { STABLECOIN_CONTRACTS } from './StablecoinContracts.js';
+import { Wallet } from 'ethers';
 
 const sleep = (seconds) => new Promise(resolve => setTimeout(resolve, seconds * 1000));
-
 const purple = (text) => `\x1b[35m${text}\x1b[0m`;
 const blue = (text) => `\x1b[34m${text}\x1b[0m`;
 const green = (text) => `\x1b[32m${text}\x1b[0m`;
@@ -16,12 +16,11 @@ const createdByLogo = `
 ██║   ██║█████╗  █████╗      █████╗  ███████║██╔████╔██║██║██║   ╚████╔╝
 ██║   ██║██╔══╝  ██╔══╝      ██╔══╝  ██╔══██║██║╚██╔╝██║██║██║    ╚██╔╝
 ╚██████╔╝██║     ██║         ██║     ██║  ██║██║ ╚═╝ ██║██║███████╗██║
- ╚═════╝ ╚═╝     ╚═╝         ╚═╝     ╚═╝  ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚═╝
+ ╚═════╝ ╚╚╝     ╚═╝         ╚═╝     ╚╚╝  ╚═╝╚╚╝     ╚═╝╚╚╝╚══════╝╚╚╝
 `;
 const creativeMessage = `
 We’re here to make blockchain easier and better.
 `;
-
 const ERC20_ABI = [
   {
     "constant": true,
@@ -55,34 +54,28 @@ const ERC20_ABI = [
     "type": "function"
   }
 ];
-
 const formatTokenAmount = (amountWei, decimals) => {
     if (!amountWei || BigInt(amountWei) === 0n) return '0';
-
     const amountBigInt = BigInt(amountWei);
     const actualDecimals = typeof decimals === 'number' && decimals >= 0 ? decimals : 18;
-
     const amountInUnitsString = Web3.utils.fromWei(amountBigInt.toString(), actualDecimals);
-    
+
     const amountInUnitsFloat = parseFloat(amountInUnitsString);
 
-    const displayPrecision = Math.min(actualDecimals, 8); 
-
+    const displayPrecision = Math.min(actualDecimals, 8);
     if (isNaN(amountInUnitsFloat) || !isFinite(amountInUnitsFloat)) {
         return 'Invalid Amount';
     }
 
     let formatted = amountInUnitsFloat.toFixed(displayPrecision);
-    formatted = formatted.replace(/\.?0+$/, ''); 
-
+    formatted = formatted.replace(/\.?0+$/, '');
     if (formatted === '0' && amountBigInt > 0n) {
         formatted = amountInUnitsFloat.toFixed(actualDecimals);
         formatted = formatted.replace(/\.?0+$/, '');
     }
-    
+
     return formatted;
 };
-
 
 const main = async () => {
   console.clear();
@@ -90,25 +83,81 @@ const main = async () => {
   console.log(purple("Script created by:"));
   console.log(purple(createdByLogo));
   console.log(purple(creativeMessage));
-
-  const privateKeys = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
+  const rawInputs = (await fs.readFile("YourPrivateKey.txt", "utf-8"))
     .split("\n")
-    .map(key => key.trim())
-    .filter(key => key);
+    .map(line => line.trim())
+    .filter(line => line);
+  const privateKeys = [];
+  let individualPrivateKeyCount = 0;
+  let derivedAccountCount = 0;
 
-  privateKeys.forEach((key, index) => {
-    if (!/^0x[a-fA-F0-9]{64}$/.test(key)) {
-      if (/^[a-fA-F0-9]{64}$/.test(key)) {
-        privateKeys[index] = `0x${key}`;
-      } else {
-        console.error(`Invalid private key format: ${key}`);
-        process.exit(1);
+  const numToDerive = 5;
+  for (const input of rawInputs) {
+    const words = input.split(' ').length;
+    if (words === 12 || words === 24) {
+      try {
+        console.log(cyan(`\n>>> Analyzing seed phrase from YourPrivateKey.txt <<<`));
+        for (let i = 0; i < numToDerive; i++) {
+          const path = `m/44'/60'/0'/0/${i}`;
+          const wallet = Wallet.fromPhrase(input, path);
+          if (!privateKeys.includes(wallet.privateKey)) {
+             privateKeys.push(wallet.privateKey);
+             derivedAccountCount++;
+             console.log(`  ✅ Found account ${i + 1}: ${green(wallet.address)} (derived from phrase)`);
+          }
+        }
+        console.log(cyan(`<<< Finished deriving from this seed phrase. >>>`));
+      } catch (phraseError) {
+        console.warn(purple(`  ❌ Failed to derive account from seed phrase: "${input.substring(0, Math.min(input.length, 20))}...". Error: ${phraseError.message}. Attempting as Private Key.`));
+        const initialKeysLength = privateKeys.length;
+        if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+            if (/^[a-fA-F0-9]{64}$/.test(input)) {
+                if (!privateKeys.includes(`0x${input}`)) {
+                    privateKeys.push(`0x${input}`);
+                }
+            } else {
+                console.error(purple(`  ❌ Invalid private key format: ${input}`));
+            }
+        } else {
+            if (!privateKeys.includes(input)) {
+                privateKeys.push(input);
+            }
+        }
+        if (privateKeys.length > initialKeysLength) {
+            individualPrivateKeyCount++;
+        }
+      }
+    } else {
+      const initialKeysLength = privateKeys.length;
+        if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+            if (/^[a-fA-F0-9]{64}$/.test(input)) {
+                if (!privateKeys.includes(`0x${input}`)) {
+                    privateKeys.push(`0x${input}`);
+                }
+            } else {
+                console.error(purple(`  ❌ Invalid private key format: ${input}`));
+            }
+        } else {
+            if (!privateKeys.includes(input)) {
+                privateKeys.push(input);
+            }
+        }
+      if (privateKeys.length > initialKeysLength) {
+          individualPrivateKeyCount++;
       }
     }
-  });
+  }
+
+  if (privateKeys.length === 0) {
+      console.error(purple("No valid private keys or seed phrases found in YourPrivateKey.txt. Exiting."));
+      process.exit(1);
+  }
+
+  console.log(`\nSuccessfully loaded ${individualPrivateKeyCount} individual private keys.`);
+  console.log(`Successfully derived ${derivedAccountCount} accounts from seed phrases.`);
+  console.log(purple(`\nTotal ${privateKeys.length} wallets will be used for transactions.`));
 
   const networks = JSON.parse(await fs.readFile("listchainmainnet.txt", "utf-8"));
-
   const { networkChoice } = await inquirer.prompt([
     {
       type: "list",
@@ -117,10 +166,8 @@ const main = async () => {
       choices: ["0. All Networks (Asset Detection)", ...networks.map((net, index) => `${index + 1}. ${net.name}`)],
     },
   ]);
-
   if (networkChoice === "0. All Networks (Asset Detection)") {
     console.log(purple("\n=== Detecting Assets Across All Wallets & Networks ==="));
-
     const detectedBalancesByWallet = new Map();
 
     for (const privateKey of privateKeys) {
@@ -130,7 +177,6 @@ const main = async () => {
             address: account.address,
             assets: []
         });
-
         console.log(`\n--- Wallet Address: ${green(account.address)} ---`);
 
         let foundAnyAssetForWallet = false;
@@ -231,13 +277,12 @@ const main = async () => {
             }
             summaryByWallet.get(item.address).push(item);
         });
-
         for (const [walletAddress, assets] of summaryByWallet.entries()) {
             console.log(`\nWallet: ${green(walletAddress)}`);
             const assetsSortedForDisplay = assets.sort((a, b) => {
                 const order = { 'USDC': 1, 'USDT': 2, 'Native': 3 };
-                let aTypeOrder = a.type === 'Native' ? order.Native : order[a.token.symbol];
-                let bTypeOrder = b.type === 'Native' ? order.Native : order[b.token.symbol];
+                let aTypeOrder = a.type === 'Native' ? order.Native : (a.token ? order[a.token.symbol] : 99);
+                let bTypeOrder = b.type === 'Native' ? order.Native : (b.token ? order[b.token.symbol] : 99);
 
                 if (a.network.name !== b.network.name) {
                     return a.network.name.localeCompare(b.network.name);
@@ -249,7 +294,8 @@ const main = async () => {
                 let balanceString;
                 if (item.type === 'Native') {
                     balanceString = `${blue(tempWeb3ForFormatting.utils.fromWei(item.balance, "ether"))} ${item.network.symbol}`;
-                } else {
+                }
+                else {
                     balanceString = `${blue(formatTokenAmount(item.balance, item.token.decimals))} ${item.token.symbol}`;
                 }
                 console.log(`  on ${cyan(item.network.name)} (${item.type}): ${balanceString}`);
@@ -265,7 +311,6 @@ const main = async () => {
                 default: false,
             },
         ]);
-
         if (confirmTransfer) {
             const { destinationAddress } = await inquirer.prompt([
                 {
@@ -280,10 +325,9 @@ const main = async () => {
                     type: "input",
                     name: "confirmAddress",
                     message: purple(`\nIs this the correct destination address? ${green(destinationAddress)}\nType 'y' to confirm or anything else to cancel:`),
-                    validate: input => input.toLowerCase() === 'y' || true,
+                    default: 'y',
                 },
             ]);
-
             if (confirmAddress.toLowerCase() !== 'y') {
                 console.log(purple("\nDestination address not confirmed. Automatic transfer cancelled. Exiting."));
                 process.exit(0);
@@ -313,16 +357,16 @@ const main = async () => {
                             const gasPriceResult = await web3Transfer.eth.getGasPrice();
                             let currentBaseFeePerGas = BigInt(gasPriceResult || '0');
 
-                            const maxPriorityFeePerGasGwei = 0.01;
+                            const maxPriorityFeePerGasGwei = 1; // Increased for better transaction pricing
                             const maxPriorityFeePerGasWei = BigInt(web3Transfer.utils.toWei(maxPriorityFeePerGasGwei.toString(), 'gwei'));
-                            
-                            const maxFeePerGas = (currentBaseFeePerGas + maxPriorityFeePerGasWei) * 120n / 100n;
-
+                            const maxFeePerGas = (currentBaseFeePerGas + maxPriorityFeePerGasWei) * 150n / 100n; // Increased buffer
+                            if (maxFeePerGas < maxPriorityFeePerGasWei) {
+                                maxFeePerGas = maxPriorityFeePerGasWei + currentBaseFeePerGas;
+                            }
 
                             let gasLimit;
                             let rawAmountToSend;
                             let tx;
-
                             if (item.type === 'Native') {
                                 try {
                                     const estimatedGasResult = await web3Transfer.eth.estimateGas({
@@ -330,7 +374,7 @@ const main = async () => {
                                         to: destinationAddress,
                                         value: '1',
                                     });
-                                    gasLimit = BigInt(Math.floor(Number(estimatedGasResult || '0') * 1.2));
+                                    gasLimit = BigInt(Math.floor(Number(estimatedGasResult || '0') * 1.5)); // Increased buffer
                                     console.log(blue(`  Estimated Gas Limit: ${gasLimit.toString()}`));
                                 } catch (estimateError) {
                                     console.warn(purple(`  Could not estimate gas. Using default 21000. Error: ${estimateError.message}`));
@@ -342,12 +386,11 @@ const main = async () => {
                                 const safetyBuffer = BigInt(web3Transfer.utils.toWei('0.000001', 'ether'));
 
                                 rawAmountToSend = currentBalanceWei - estimatedTxCost - safetyBuffer;
-
                                 if (rawAmountToSend < 0n) {
                                     console.error(purple(`  Insufficient ${item.network.symbol} balance for gas. Have: ${web3Transfer.utils.fromWei(currentBalanceWei.toString(), 'ether')} ${item.network.symbol}, Needed for gas: ${web3Transfer.utils.fromWei(estimatedTxCost.toString(), 'ether')} ${item.network.symbol}. Skipping this transfer.`));
                                     continue;
                                 }
-                                
+
                                 if (rawAmountToSend === 0n) {
                                     console.warn(purple(`  Skipping transfer for ${account.address} on ${item.network.name} as final amount to send is 0 ${item.network.symbol}.`));
                                     continue;
@@ -362,7 +405,7 @@ const main = async () => {
                                     nonce: currentNonce,
                                     chainId: item.network.chainId,
                                 };
-                            } else { // ERC20
+                            } else {
                                 const tokenInstance = new web3Transfer.eth.Contract(ERC20_ABI, item.token.address);
                                 const currentTokenBalanceWei = BigInt(item.balance);
                                 rawAmountToSend = currentTokenBalanceWei;
@@ -378,7 +421,7 @@ const main = async () => {
                                         to: item.token.address,
                                         data: tokenInstance.methods.transfer(destinationAddress, rawAmountToSend.toString()).encodeABI(),
                                     });
-                                    gasLimit = BigInt(Math.floor(Number(estimatedGasResult || '0') * 1.2));
+                                    gasLimit = BigInt(Math.floor(Number(estimatedGasResult || '0') * 1.5)); // Increased buffer
                                     console.log(blue(`  Estimated Gas Limit: ${gasLimit.toString()}`));
                                 } catch (estimateError) {
                                     console.warn(purple(`  Could not estimate gas for ERC20. Using default 100000. Error: ${estimateError.message}`));
@@ -423,7 +466,7 @@ const main = async () => {
                             let errorMessage = `  ❌ Transfer failed for ${account.address} on ${item.network.name} (${item.type === 'Native' ? item.network.symbol : item.token.symbol}): ${error.message}`;
                             if (error.message.includes("insufficient funds")) {
                                 console.error(purple(`${errorMessage}. Skipping this transfer due to insufficient native funds for gas.`));
-                            } else if (error.message.includes("Replacement transaction underpriced") || error.message.includes("nonce already used")) {
+                            } else if (error.message.includes("Replacement transaction underpriced") || error.message.includes("nonce already used") || error.message.includes("transaction underpriced")) {
                                 console.error(purple(`${errorMessage}. This might indicate a nonce or gas fee issue (transaction stuck). Skipping this transfer.`));
                             } else {
                                 console.error(purple(`${errorMessage}. Skipping this transfer.`));
@@ -455,12 +498,10 @@ const main = async () => {
       choices: ["ETH", "ERC20 Token"],
     },
   ]);
-
   let tokenContractAddress = null;
   let tokenContract = null;
   let tokenDecimals = 18;
   let tokenSymbol = networkSymbol;
-
   if (transferMode === "ERC20 Token") {
     const { contractAddress } = await inquirer.prompt([
       {
@@ -486,7 +527,7 @@ const main = async () => {
           const formattedBalance = formatTokenAmount(tokenBalanceWei, tokenDecimals);
           console.log(`Address ${green(account.address)}: ${blue(formattedBalance)} ${tokenSymbol}`);
         } catch (error) {
-          console.error(purple(`Error fetching token balance for ${account.address}: ${error.message}`));
+          console.error(`Error fetching token balance for ${account.address}: ${error.message}`);
         }
       }
       console.log(purple("--- End Token Balances ---\n"));
@@ -539,8 +580,7 @@ const main = async () => {
   console.log(`\nSelected Network: ${name}`);
   console.log(`Number of Addresses to Send To: ${targetAddresses.length}`);
 
-  // Menambahkan pertanyaan konfirmasi untuk alamat tujuan
-  if (!useListAddresses) { // Hanya jika mengirim ke satu alamat saja
+  if (!useListAddresses) {
       const { confirmTargetAddress } = await inquirer.prompt([
           {
               type: "confirm",
@@ -549,12 +589,11 @@ const main = async () => {
               default: false,
           },
       ]);
-
       if (!confirmTargetAddress) {
           console.log(purple("\nDestination address not confirmed. Transfer cancelled. Exiting."));
           process.exit(0);
       }
-  } else { // Jika menggunakan listaddress.txt, tampilkan daftar alamatnya
+  } else {
       console.log(purple("\nSending to the following addresses from listaddress.txt:"));
       targetAddresses.forEach(addr => console.log(green(`- ${addr}`)));
       const { confirmListAddresses } = await inquirer.prompt([
@@ -571,12 +610,12 @@ const main = async () => {
       }
   }
 
-
+  console.log(purple("\n--- Sender Initial Balances ---"));
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     if (transferMode === "ETH") {
       const currentBalance = await web3.eth.getBalance(account.address);
-      console.log(`Current balance of sender ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${networkSymbol}`);
+      console.log(`Address ${green(account.address)}: ${blue(web3.utils.fromWei(currentBalance, "ether"))} ${networkSymbol}`);
     } else {
       try {
         const tokenBalanceWei = await tokenContract.methods.balanceOf(account.address).call();
@@ -584,29 +623,26 @@ const main = async () => {
         console.log(`Address ${green(account.address)}: ${blue(formattedBalance)} ${tokenSymbol}`);
       } catch (error) {
         console.error(`Error fetching token balance for ${account.address}: ${error.message}`);
-        console.log(`Current balance of sender ${green(account.address)}: ${blue("N/A")} ${tokenSymbol}`);
+        console.log(`Address ${green(account.address)}: ${blue("N/A")} ${tokenSymbol}`);
       }
     }
   }
-
+  console.log(purple("--- End Sender Initial Balances ---\n"));
   for (const privateKey of privateKeys) {
     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
     let nonce = await web3.eth.getTransactionCount(account.address, "latest");
-
     for (let i = 0; i < transactionsCount; i++) {
       for (const toAddress of targetAddresses) {
         try {
           const gasPriceResult = await web3.eth.getGasPrice();
           let currentBaseFeePerGas = BigInt(gasPriceResult || '0');
-          
+
           const maxPriorityFeePerGasGwei = 0.01;
           const maxPriorityFeePerGasWei = BigInt(web3.utils.toWei(maxPriorityFeePerGasGwei.toString(), 'gwei'));
           const maxFeePerGas = (currentBaseFeePerGas + maxPriorityFeePerGasWei) * 120n / 100n;
 
-
           let rawAmountToSend;
           let transaction;
-
           if (transferMode === "ETH") {
             let gasLimit;
             try {
@@ -630,19 +666,19 @@ const main = async () => {
                 rawAmountToSend = currentBalanceWei - estimatedTxCost - safetyBuffer;
 
                 if (rawAmountToSend < 0n) {
-                    console.error(purple(`Insufficient ETH balance for gas on ${account.address}. Have: ${web3.utils.fromWei(currentBalanceWei.toString(), 'ether')} ETH, Needed for gas: ${web3.utils.fromWei(estimatedTxCost.toString(), 'ether')} ETH. Skipping transaction.`));
+                    console.error(purple(`Insufficient ETH balance for gas on ${account.address}. Have: ${web3.utils.fromWei(currentBalanceWei.toString(), 'ether')} ${networkSymbol}, Needed for gas: ${web3.utils.fromWei(estimatedTxCost.toString(), 'ether')} ${networkSymbol}. Skipping transaction.`));
                     continue;
                 }
             } else {
                 rawAmountToSend = BigInt(web3.utils.toWei(amount, "ether"));
                 if (currentBalanceWei < (rawAmountToSend + estimatedTxCost)) {
-                    console.error(purple(`Insufficient ETH balance for amount and gas on ${account.address}. Have: ${web3.utils.fromWei(currentBalanceWei.toString(), 'ether')} ETH, Want: ${web3.utils.fromWei(rawAmountToSend.toString(), 'ether')} ETH + ${web3.utils.fromWei(estimatedTxCost.toString(), 'ether')} ETH for gas. Skipping transaction.`));
+                    console.error(purple(`Insufficient ETH balance for amount and gas on ${account.address}. Have: ${web3.utils.fromWei(currentBalanceWei.toString(), 'ether')} ${networkSymbol}, Want: ${web3.utils.fromWei(rawAmountToSend.toString(), 'ether')} ${networkSymbol} + ${web3.utils.fromWei(estimatedTxCost.toString(), 'ether')} ${networkSymbol} for gas. Skipping transaction.`));
                     continue;
                 }
             }
-            
+
             if (rawAmountToSend === 0n) {
-                console.warn(purple(`Skipping transaction for ${account.address} as final amount to send is 0 ETH.`));
+                console.warn(purple(`Skipping transaction for ${account.address} as final amount to send is 0 ${networkSymbol}.`));
                 continue;
             }
 
@@ -655,22 +691,20 @@ const main = async () => {
               nonce: nonce,
               chainId: chainId,
             };
-          } else { // ERC20 Token transfer mode
+          } else {
             let tokenAmountWei;
             const currentTokenBalanceWeiStr = await tokenContract.methods.balanceOf(account.address).call();
             let currentTokenBalanceWei = BigInt(currentTokenBalanceWeiStr || '0');
-
             if (amount.toLowerCase() === 'all') {
               tokenAmountWei = currentTokenBalanceWei;
             } else {
-              tokenAmountWei = BigInt(web3.utils.toWei(amount, tokenDecimals)); 
-              
+              tokenAmountWei = BigInt(web3.utils.toWei(amount, tokenDecimals));
               if (tokenAmountWei > currentTokenBalanceWei) {
                   console.error(purple(`Insufficient token balance for ${account.address}. Requested ${amount} ${tokenSymbol}, but only have ${formatTokenAmount(currentTokenBalanceWei.toString(), tokenDecimals)} ${tokenSymbol}. Skipping transaction.`));
                   continue;
               }
             }
-            
+
             if (tokenAmountWei === 0n) {
                 console.warn(purple(`Skipping transaction for ${account.address} on ${name} (${tokenSymbol}) as final amount to send is 0.`));
                 continue;
@@ -718,23 +752,23 @@ const main = async () => {
 
           const signedTx = await web3.eth.accounts.signTransaction(transaction, privateKey);
           const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
-          
+
           let explorerLink;
           if (networkExplorer) {
               explorerLink = networkExplorer + receipt.transactionHash;
           } else {
               console.warn(purple(`Warning: Explorer link not found for network ${name}. Displaying transaction hash only.`));
-              explorerLink = `Transaction Hash: ${receipt.transactionHash} on ${name}`; 
+              explorerLink = `Transaction Hash: ${receipt.transactionHash} on ${name}`;
           }
-          
+
           let transferredAmountDisplay;
           if (transferMode === 'ETH') {
             transferredAmountDisplay = blue(`${amount}`) + ` ${networkSymbol}`;
           } else {
             transferredAmountDisplay = blue(`${amount}`) + ` ${tokenSymbol}`;
           }
-          
-          console.log(`✅ Transfer successful: ${transferredAmountDisplay} to ${green(toAddress)}: ${blue(explorerLink)}`);
+
+          console.log(`✅ Transfer successful: ${transferredAmountDisplay} to ${green(toAddress)} from ${green(account.address)}: ${blue(explorerLink)}`);
           nonce++;
           if (delay > 0) await sleep(delay);
         } catch (error) {
@@ -764,7 +798,7 @@ const main = async () => {
         console.log(`\nFinal balance of sender ${green(account.address)}: ${blue(formattedBalance)} ${tokenSymbol}`);
       }
     } catch (error) {
-      console.error(`Error fetching final balance: ${error.message}`);
+      console.error(`Error fetching final balance for ${account.address}: ${error.message}`);
     }
   }
 };
